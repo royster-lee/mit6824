@@ -44,7 +44,8 @@ func Worker(mapf func(string, string) []KeyValue,
 }
 
 func AskTask() string {
-	args := struct {}{}
+	args := TaskArgs{}
+	args.workId = "work one"
 	reply := TaskReply{}
 	call("Master.GiveTask", &args, &reply)
 	return  reply.filename

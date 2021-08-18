@@ -27,7 +27,8 @@ func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
 	reply.Y = args.X + 1
 	return nil
 }
-func (m *Master) GiveTask(args interface{}, reply *TaskReply) error {
+func (m *Master) GiveTask(args *TaskArgs, reply *TaskReply) error {
+	fmt.Println(args.workId)
 	reply.filename = m.filenames[m.index]
 	return nil
 }

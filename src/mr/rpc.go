@@ -26,6 +26,10 @@ type TaskReply struct {
 	filename string
 }
 
+type TaskArgs struct {
+	workId string
+}
+
 // Add your RPC definitions here.
 
 
