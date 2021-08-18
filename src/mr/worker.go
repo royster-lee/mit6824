@@ -55,6 +55,7 @@ func Worker(mapf func(string, string) []KeyValue,
 		file.Close()
 		kva := mapf(filename, string(content))
 		intermediate = append(intermediate, kva...)
+		fmt.Printf("%v\n", intermediate)
 		f, err := os.Create("workId-shuffleId")
 		if err != nil {
 			log.Fatalf("Create shuffleId error")
