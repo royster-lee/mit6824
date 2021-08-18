@@ -29,11 +29,17 @@ func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
 // start a thread that listens for RPCs from worker.go
 //
 func (m *Master) server() {
-	rpc.Register(m)
+	err := rpc.Register(m)
+	if err != nil {
+		return 
+	}
 	rpc.HandleHTTP()
 	//l, e := net.Listen("tcp", ":1234")
 	sockname := masterSock()
-	os.Remove(sockname)
+	err = os.Remove(sockname)
+	if err != nil {
+		return 
+	}
 	l, e := net.Listen("unix", sockname)
 	if e != nil {
 		log.Fatal("listen error:", e)
