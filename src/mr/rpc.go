@@ -23,11 +23,11 @@ type ExampleReply struct {
 }
 
 type TaskReply struct {
-	filename string
+	Filename string
 }
 
 type TaskArgs struct {
-	workId string
+	WorkId string
 }
 
 // Add your RPC definitions here.

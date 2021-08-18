@@ -28,8 +28,8 @@ func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
 	return nil
 }
 func (m *Master) GiveTask(args *TaskArgs, reply *TaskReply) error {
-	fmt.Println(args.workId)
-	reply.filename = m.filenames[m.index]
+	fmt.Println(args.WorkId)
+	reply.Filename = m.filenames[m.index]
 	return nil
 }
 
