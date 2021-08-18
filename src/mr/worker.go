@@ -45,7 +45,7 @@ func Worker(mapf func(string, string) []KeyValue,
 	shuffle := func(filename string){
 		var intermediate []KeyValue
 		fmt.Println("filename = ", filename)
-		file, err := os.Open("../main" + filename)
+		file, err := os.Open("../main/" + filename)
 		if err != nil {
 			log.Fatalf("cannot open %v", filename)
 		}
