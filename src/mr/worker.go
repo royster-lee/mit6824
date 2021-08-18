@@ -2,7 +2,6 @@ package mr
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 )
@@ -58,11 +57,11 @@ func Worker(mapf func(string, string) []KeyValue,
 		intermediate = append(intermediate, kva...)
 		f, err := os.Create("workId-shuffleId")
 		if err != nil {
-			log.Fatalf("cannot open %v", filename)
+			log.Fatalf("Create shuffleId error")
 		}
-		_, err = io.WriteString(f, fmt.Sprintf("%v", intermediate))
+		_, err = f.WriteString(fmt.Sprintf("%v", intermediate))
 		if err != nil {
-			return
+			log.Fatalf("WriteString error")
 		}
 		f.Close()
 	}
