@@ -2,6 +2,8 @@ package mr
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 )
 import "log"
@@ -40,7 +42,30 @@ func Worker(mapf func(string, string) []KeyValue,
 	// CallExample()
 
 	task := AskTask()
-	fmt.Fprintf(os.Stdout, "filename = %s", task)
+	shuffle := func(filename string){
+		var intermediate []KeyValue
+		file, err := os.Open(filename)
+		if err != nil {
+			log.Fatalf("cannot open %v", filename)
+		}
+		content, err := ioutil.ReadAll(file)
+		if err != nil {
+			log.Fatalf("cannot read %v", filename)
+		}
+		file.Close()
+		kva := mapf(filename, string(content))
+		intermediate = append(intermediate, kva...)
+		f, err := os.Create("workId-shuffleId")
+		if err != nil {
+			log.Fatalf("cannot open %v", filename)
+		}
+		_, err = io.WriteString(f, fmt.Sprintf("%v", intermediate))
+		if err != nil {
+			return
+		}
+		f.Close()
+	}
+	shuffle(task)
 }
 
 func AskTask() string {
