@@ -22,6 +22,10 @@ type ExampleReply struct {
 	Y int
 }
 
+type TaskReply struct {
+	filename string
+}
+
 // Add your RPC definitions here.
 
 

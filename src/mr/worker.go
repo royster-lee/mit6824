@@ -1,6 +1,9 @@
 package mr
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 import "log"
 import "net/rpc"
 import "hash/fnv"
@@ -36,6 +39,15 @@ func Worker(mapf func(string, string) []KeyValue,
 	// uncomment to send the Example RPC to the master.
 	// CallExample()
 
+	task := AskTask()
+	fmt.Fprintf(os.Stdout, "filename = %s", task)
+}
+
+func AskTask() string {
+	args := struct {}{}
+	reply := TaskReply{}
+	call("Master.GiveTask", &args, &reply)
+	return  reply.filename
 }
 
 //
@@ -69,6 +81,7 @@ func CallExample() {
 func call(rpcname string, args interface{}, reply interface{}) bool {
 	// c, err := rpc.DialHTTP("tcp", "127.0.0.1"+":1234")
 	sockname := masterSock()
+	fmt.Println("sockname =", sockname)
 	c, err := rpc.DialHTTP("unix", sockname)
 	if err != nil {
 		log.Fatal("dialing:", err)

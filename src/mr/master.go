@@ -1,6 +1,9 @@
 package mr
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 import "net"
 import "os"
 import "net/rpc"
@@ -9,7 +12,8 @@ import "net/http"
 
 type Master struct {
 	// Your definitions here.
-
+	filenames []string
+	index int
 }
 
 // Your code here -- RPC handlers for the worker to call.
@@ -23,7 +27,10 @@ func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
 	reply.Y = args.X + 1
 	return nil
 }
-
+func (m *Master) GiveTask(args interface{}, reply *TaskReply) error {
+	reply.filename = m.filenames[m.index]
+	return nil
+}
 
 //
 // start a thread that listens for RPCs from worker.go
@@ -36,6 +43,7 @@ func (m *Master) server() {
 	rpc.HandleHTTP()
 	//l, e := net.Listen("tcp", ":1234")
 	sockname := masterSock()
+	fmt.Println("sockname =", sockname)
 	err = os.Remove(sockname)
 	if err != nil {
 		return 
@@ -44,7 +52,12 @@ func (m *Master) server() {
 	if e != nil {
 		log.Fatal("listen error:", e)
 	}
-	go http.Serve(l, nil)
+	go func() {
+		err := http.Serve(l, nil)
+		if err != nil {
+
+		}
+	}()
 }
 
 //
@@ -69,6 +82,7 @@ func MakeMaster(files []string, nReduce int) *Master {
 	m := Master{}
 
 	// Your code here.
+	m.filenames = files
 
 
 	m.server()
