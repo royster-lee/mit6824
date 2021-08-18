@@ -55,12 +55,12 @@ func Worker(mapf func(string, string) []KeyValue,
 		file.Close()
 		kva := mapf(filename, string(content))
 		intermediate = append(intermediate, kva...)
-		fmt.Printf("%v\n", intermediate)
 		f, err := os.Create("workId-shuffleId")
 		if err != nil {
 			log.Fatalf("Create shuffleId error")
 		}
-		_, err = f.WriteString(fmt.Sprintf("%v", intermediate))
+		i, err := f.WriteString(fmt.Sprintf("%v", intermediate))
+		fmt.Println("i = ", i)
 		if err != nil {
 			log.Fatalf("WriteString error")
 		}
