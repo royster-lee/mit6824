@@ -68,10 +68,7 @@ func Worker(mapf func(string, string) []KeyValue,
 		if err != nil {
 			log.Fatalf("Create shuffle error")
 		}
-		i, err := f.WriteString(fmt.Sprintf("%v", intermediate))
-		if err != nil {
-			log.Fatalf("WriteString error")
-		}
+		f.WriteString(fmt.Sprintf("%v", intermediate))
 		f.Close()
 		CompleteTask(shuffleName)
 	}
