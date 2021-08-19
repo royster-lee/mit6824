@@ -28,7 +28,7 @@ func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
 	reply.Y = args.X + 1
 	return nil
 }
-func (m *Master) GiveTask(args struct{}, reply *TaskReply) error {
+func (m *Master) GiveTask(args *struct{}, reply *TaskReply) error {
 	if m.mapTaskIndex == len(m.mapTask) {
 		reply.Filename = ""
 	} else {
@@ -39,13 +39,13 @@ func (m *Master) GiveTask(args struct{}, reply *TaskReply) error {
 	return nil
 }
 
-func (m *Master) ReduceTask(args struct{}, reply *TaskReply) error {
+func (m *Master) ReduceTask(args *struct{}, reply *TaskReply) error {
 	one := <- m.reduceChan
 	reply.Filename = one
 	return nil
 }
 
-func (m *Master) CompleteTask(args *TaskArgs, reply struct{}) error {
+func (m *Master) CompleteTask(args *TaskArgs, reply *struct{}) error {
 	m.reduceChan <- args.Shuffle
 	return nil
 }
