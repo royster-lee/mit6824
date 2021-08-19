@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sort"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -20,6 +22,11 @@ type KeyValue struct {
 	Key   string
 	Value string
 }
+type ByKey []KeyValue
+
+func (a ByKey) Len() int           { return len(a) }
+func (a ByKey) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByKey) Less(i, j int) bool { return a[i].Key < a[j].Key }
 
 //
 // use ihash(key) % NReduce to choose the reduce
@@ -81,18 +88,41 @@ func Worker(mapf func(string, string) []KeyValue,
 
 	reducerWorker := func(i int) {
 		filename := AskReduceTask()
-		//oname := "mr-out-" + strconv.Itoa(i)
-		//ofile, _ := os.Create(oname)
+		oname := "mr-out-" + strconv.Itoa(i)
+		ofile, _ := os.Create(oname)
+		shuffle, err := os.Open("../main/" + filename)
+		if err != nil {
+			log.Fatalf("cannot open %v", filename)
+		}
+		var intermediate []KeyValue
+		dec:= json.NewDecoder(shuffle)
+		err = dec.Decode(&intermediate)
+		if err != nil {
+			log.Fatalf("cannot decode %v", filename)
+		}
+		sort.Sort(ByKey(intermediate))
+		for i < len(intermediate) {
+			j := i + 1
+			for j < len(intermediate) && intermediate[j].Key == intermediate[i].Key {
+				j++
+			}
+			values := []string{}
+			for k := i; k < j; k++ {
+				values = append(values, intermediate[k].Value)
+			}
+			output := reducef(intermediate[i].Key, values)
 
-		//shuffle, err := os.Open("../main/" + filename)
-		//if err != nil {
-		//	log.Fatalf("cannot open %v", filename)
-		//}
-		//content, err := ioutil.ReadAll(shuffle)
-		//if err != nil {
-		//	log.Fatalf("cannot read %v", filename)
-		//}
-		fmt.Println("reduce task = ", filename)
+			// this is the correct format for each line of Reduce output.
+			fmt.Fprintf(ofile, "%v %v\n", intermediate[i].Key, output)
+
+			i = j
+		}
+		ofile.Close()
+		shuffle.Close()
+		err = os.Remove("../main/" + filename)
+		if err != nil {
+			log.Fatalf("cannot remove %v", filename)
+		}
 	}
 	for i := 0; i < 10; i++ {
 		go reducerWorker(i)
