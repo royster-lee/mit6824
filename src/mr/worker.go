@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sync"
+	"time"
 )
 import "log"
 import "net/rpc"
@@ -39,10 +41,16 @@ func Worker(mapf func(string, string) []KeyValue,
 
 	// uncomment to send the Example RPC to the master.
 	// CallExample()
-	StartReduce(reducef)
-	filename := AskTask()
-	shuffleName := "shuffle-" + filename
-	shuffle := func(filename string){
+
+	var mu sync.Mutex
+	mapWorker := func(){
+		mu.Lock()
+		filename := AskTask()
+		mu.Unlock()
+		if filename == "" {
+			return
+		}
+		shuffleName := "shuffle-" + filename
 		var intermediate []KeyValue
 		fmt.Println("filename = ", filename)
 		file, err := os.Open("../main/" + filename)
@@ -66,30 +74,43 @@ func Worker(mapf func(string, string) []KeyValue,
 			log.Fatalf("WriteString error")
 		}
 		f.Close()
+		CompleteTask(shuffleName)
 	}
-	shuffle(filename)
-	CompleteTask(shuffleName)
+	for i:=0; i<20; i++ {
+		go mapWorker()
+	}
+
+	reducerWorker := func() {
+		task := AskReduceTask()
+		fmt.Println("reduce task = ", task)
+	}
+	for i := 0; i < 10; i++ {
+		go reducerWorker()
+	}
+	time.Sleep(5 * time.Second)
 }
 
 func AskTask() string {
-	args := TaskArgs{}
-	args.Shuffle = "find work"
+	args := struct{}{}
 	reply := TaskReply{}
 	call("Master.GiveTask", &args, &reply)
+	return  reply.Filename
+}
+
+func AskReduceTask() string {
+	args := struct{}{}
+	reply := TaskReply{}
+	call("Master.ReduceTask", &args, &reply)
 	return  reply.Filename
 }
 
 func CompleteTask(shuffleName string) {
 	args := TaskArgs{}
 	args.Shuffle = shuffleName
-	reply := TaskReply{}
+	reply := struct{}{}
 	call("Master.CompleteTask", &args, &reply)
 }
 
-func StartReduce(reducef func(string, []string) string) {
-	reply := TaskReply{}
-	call("Master.StartReduce", &reducef, &reply)
-}
 
 //
 // example function to show how to make an RPC call to the master.

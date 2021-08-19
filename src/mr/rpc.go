@@ -30,11 +30,6 @@ type TaskArgs struct {
 	Shuffle string
 }
 
-// Add your RPC definitions here.
-type ReudceArgs struct {
-	Ch chan string
-}
-
 // Cook up a unique-ish UNIX-domain socket name
 // in /var/tmp, for the master.
 // Can't use the current directory since
