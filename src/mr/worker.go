@@ -39,8 +39,9 @@ func Worker(mapf func(string, string) []KeyValue,
 
 	// uncomment to send the Example RPC to the master.
 	// CallExample()
-
-	task := AskTask()
+	StartReduce(reducef)
+	filename := AskTask()
+	shuffleName := "shuffle-" + filename
 	shuffle := func(filename string){
 		var intermediate []KeyValue
 		fmt.Println("filename = ", filename)
@@ -55,9 +56,9 @@ func Worker(mapf func(string, string) []KeyValue,
 		file.Close()
 		kva := mapf(filename, string(content))
 		intermediate = append(intermediate, kva...)
-		f, err := os.Create("workId-shuffleId")
+		f, err := os.Create(shuffleName)
 		if err != nil {
-			log.Fatalf("Create shuffleId error")
+			log.Fatalf("Create shuffle error")
 		}
 		i, err := f.WriteString(fmt.Sprintf("%v", intermediate))
 		fmt.Println("i = ", i)
@@ -66,15 +67,28 @@ func Worker(mapf func(string, string) []KeyValue,
 		}
 		f.Close()
 	}
-	shuffle(task)
+	shuffle(filename)
+	CompleteTask(shuffleName)
 }
 
 func AskTask() string {
 	args := TaskArgs{}
-	args.WorkId = "work one"
+	args.Shuffle = "find work"
 	reply := TaskReply{}
 	call("Master.GiveTask", &args, &reply)
 	return  reply.Filename
+}
+
+func CompleteTask(shuffleName string) {
+	args := TaskArgs{}
+	args.Shuffle = shuffleName
+	reply := TaskReply{}
+	call("Master.CompleteTask", &args, &reply)
+}
+
+func StartReduce(reducef func(string, []string) string) {
+	reply := TaskReply{}
+	call("Master.StartReduce", &reducef, &reply)
 }
 
 //

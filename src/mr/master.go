@@ -1,6 +1,7 @@
 package mr
 
 import (
+	"context"
 	"fmt"
 	"log"
 )
@@ -12,8 +13,11 @@ import "net/http"
 
 type Master struct {
 	// Your definitions here.
-	filenames []string
-	index int
+	mapTask []string
+	mapTaskIndex int
+	reduceChan chan string
+	ctx context.Context
+	cancel context.CancelFunc
 }
 
 // Your code here -- RPC handlers for the worker to call.
@@ -28,10 +32,38 @@ func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
 	return nil
 }
 func (m *Master) GiveTask(args *TaskArgs, reply *TaskReply) error {
-	fmt.Println(args.WorkId)
-	reply.Filename = m.filenames[m.index]
+	fmt.Println("Shuffle = ", args.Shuffle)
+
+	reply.Filename = m.mapTask[m.mapTaskIndex]
+	m.mapTaskIndex++
+
 	return nil
 }
+
+func (m *Master) CompleteTask(args *TaskArgs, reply *TaskReply) error {
+	fmt.Println("Shuffle = ", args.Shuffle)
+	m.reduceChan <- args.Shuffle
+	return nil
+}
+
+func (m *Master) StartReduce(reducef func(string, []string) string) error {
+	for i:=0; i<10; i++{
+		go func() {
+			for {
+				select {
+				case s:=<-m.reduceChan:
+					fmt.Println("reducing ", s)
+				case <-m.ctx.Done():
+					fmt.Println("reduceing Done")
+				}
+			}
+		}()
+	}
+
+	return nil
+}
+
+
 
 //
 // start a thread that listens for RPCs from worker.go
@@ -69,8 +101,6 @@ func (m *Master) Done() bool {
 	ret := false
 
 	// Your code here.
-
-
 	return ret
 }
 
@@ -81,11 +111,13 @@ func (m *Master) Done() bool {
 //
 func MakeMaster(files []string, nReduce int) *Master {
 	m := Master{}
-
 	// Your code here.
-	m.filenames = files
-
-
+	m.mapTask = files
+	m.reduceChan = make(chan string, nReduce)
+	ctx, cancel := context.WithCancel(context.Background())
+	m.ctx = ctx
+	m.cancel = cancel
 	m.server()
 	return &m
 }
+
