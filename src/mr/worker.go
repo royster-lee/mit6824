@@ -1,6 +1,7 @@
 package mr
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -64,24 +65,37 @@ func Worker(mapf func(string, string) []KeyValue,
 		file.Close()
 		kva := mapf(filename, string(content))
 		intermediate = append(intermediate, kva...)
-		f, err := os.Create(shuffleName)
+		shuffleFile, err := os.Create(shuffleName)
+		enc := json.NewEncoder(shuffleFile)
+		err = enc.Encode(&intermediate)
 		if err != nil {
-			log.Fatalf("Create shuffle error")
+			log.Fatalf("cannot Encode %v", shuffleName)
+			return
 		}
-		f.WriteString(fmt.Sprintf("%v", intermediate))
-		f.Close()
+
 		CompleteTask(shuffleName)
 	}
 	for i:=0; i<20; i++ {
 		go mapWorker()
 	}
 
-	reducerWorker := func() {
-		task := AskReduceTask()
-		fmt.Println("reduce task = ", task)
+	reducerWorker := func(i int) {
+		filename := AskReduceTask()
+		//oname := "mr-out-" + strconv.Itoa(i)
+		//ofile, _ := os.Create(oname)
+
+		//shuffle, err := os.Open("../main/" + filename)
+		//if err != nil {
+		//	log.Fatalf("cannot open %v", filename)
+		//}
+		//content, err := ioutil.ReadAll(shuffle)
+		//if err != nil {
+		//	log.Fatalf("cannot read %v", filename)
+		//}
+		fmt.Println("reduce task = ", filename)
 	}
 	for i := 0; i < 10; i++ {
-		go reducerWorker()
+		go reducerWorker(i)
 	}
 	time.Sleep(5 * time.Second)
 }
