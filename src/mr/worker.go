@@ -69,7 +69,6 @@ func Worker(mapf func(string, string) []KeyValue,
 			log.Fatalf("Create shuffle error")
 		}
 		i, err := f.WriteString(fmt.Sprintf("%v", intermediate))
-		fmt.Println("i = ", i)
 		if err != nil {
 			log.Fatalf("WriteString error")
 		}
@@ -143,7 +142,6 @@ func CallExample() {
 func call(rpcname string, args interface{}, reply interface{}) bool {
 	// c, err := rpc.DialHTTP("tcp", "127.0.0.1"+":1234")
 	sockname := masterSock()
-	fmt.Println("sockname =", sockname)
 	c, err := rpc.DialHTTP("unix", sockname)
 	if err != nil {
 		log.Fatal("dialing:", err)
