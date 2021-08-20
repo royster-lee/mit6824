@@ -28,18 +28,20 @@ func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
 	reply.Y = args.X + 1
 	return nil
 }
-func (m *Master) GiveMapTask(_ *struct{}, ctx *WorkerCtx) error {
+func (m *Master) GiveMapTask(ctx *WorkerCtx, reply *WorkerCtx) error {
+	reply = ctx
 	mapTask := <- m.mapTaskChan
 	fmt.Println("give " + ctx.WorkId + " : " + mapTask.FileName)
-	ctx.mapTaskChan <- mapTask
+	reply.mapTaskChan <- mapTask
 	return nil
 }
 
-func (m *Master) CompleteTask(_ *struct{}, ctx *WorkerCtx) error {
+func (m *Master) CompleteTask(ctx *WorkerCtx, reply *WorkerCtx) error {
+	reply = ctx
 	fmt.Println(ctx.WorkId + " created a shuffle : " + ctx.ShuffleName)
 	m.fileCount--
 	if m.fileCount == 0 {
-		ctx.Done <- 1
+		reply.Done <- 1
 		m.Done()
 	}
 	return nil
