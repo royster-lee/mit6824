@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
-	"sort"
-	"strconv"
-	"sync"
 	"time"
 )
 import "log"
@@ -46,109 +44,80 @@ func Worker(mapf func(string, string) []KeyValue,
 	reducef func(string, []string) string) {
 
 	// Your worker implementation here.
-
 	// uncomment to send the Example RPC to the master.
 	// CallExample()
 
-	var mu sync.Mutex
-	mapWorker := func(){
-		mu.Lock()
-		filename := AskTask()
-		mu.Unlock()
-		if filename == "" {
-			return
-		}
-		shuffleName := "shuffle-" + filename
-		var intermediate []KeyValue
-		fmt.Println("filename = ", filename)
-		file, err := os.Open("../main/" + filename)
-		if err != nil {
-			log.Fatalf("cannot open %v", filename)
-		}
-		content, err := ioutil.ReadAll(file)
-		if err != nil {
-			log.Fatalf("cannot read %v", filename)
-		}
-		file.Close()
-		kva := mapf(filename, string(content))
-		intermediate = append(intermediate, kva...)
-		shuffleFile, err := os.Create(shuffleName)
-		enc := json.NewEncoder(shuffleFile)
-		err = enc.Encode(&intermediate)
-		if err != nil {
-			log.Fatalf("cannot Encode %v", shuffleName)
-			return
-		}
-
-		CompleteTask(shuffleName)
-	}
-	for i:=0; i<20; i++ {
-		go mapWorker()
-	}
-
-	reducerWorker := func(i int) {
-		filename := AskReduceTask()
-		oname := "mr-out-" + strconv.Itoa(i)
-		ofile, _ := os.Create(oname)
-		shuffle, err := os.Open("../main/" + filename)
-		if err != nil {
-			log.Fatalf("cannot open %v", filename)
-		}
-		var intermediate []KeyValue
-		dec:= json.NewDecoder(shuffle)
-		err = dec.Decode(&intermediate)
-		if err != nil {
-			log.Fatalf("cannot decode %v", filename)
-		}
-		sort.Sort(ByKey(intermediate))
-		for i < len(intermediate) {
-			j := i + 1
-			for j < len(intermediate) && intermediate[j].Key == intermediate[i].Key {
-				j++
-			}
-			values := []string{}
-			for k := i; k < j; k++ {
-				values = append(values, intermediate[k].Value)
-			}
-			output := reducef(intermediate[i].Key, values)
-
-			// this is the correct format for each line of Reduce output.
-			fmt.Fprintf(ofile, "%v %v\n", intermediate[i].Key, output)
-
-			i = j
-		}
-		ofile.Close()
-		shuffle.Close()
-		err = os.Remove("../main/" + filename)
-		if err != nil {
-			log.Fatalf("cannot remove %v", filename)
-		}
-	}
+	// initial worker struct
+	var wCtx WorkerCtx
+	// every worker generate a workId
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	bytes := make([]byte, 10)
 	for i := 0; i < 10; i++ {
-		go reducerWorker(i)
+		b := r.Intn(26) + 65
+		bytes[i] = byte(b)
 	}
-	time.Sleep(5 * time.Second)
+	wCtx.WorkId = string(bytes)
+	// get a map task, in this case just get filename
+	wCtx.Done = make(chan int)
+	wCtx.mapTaskChan = make(chan Task)
+	for {
+		select {
+		case maptask := <-wCtx.mapTaskChan:
+			fmt.Println("do map task")
+			wCtx.doMapTask(maptask.FileName, mapf)
+		case <-wCtx.Done:
+			fmt.Println("worker return")
+		default:
+			wCtx.askMapTask()
+		}
+	}
 }
 
-func AskTask() string {
+func (wCtx WorkerCtx)doMapTask(filename string, mapf func(string, string) []KeyValue){
+	shuffleName := "shuffle-" + filename
+	var intermediate []KeyValue
+	file, err := os.Open("../main/" + filename)
+	if err != nil {
+		log.Printf("cannot open %v", filename)
+		wCtx.ErrCh <- err
+	}
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		log.Printf("cannot open %v", filename)
+		wCtx.ErrCh <- err
+	}
+	err = file.Close()
+	if err != nil {
+		log.Printf("cannot close %v", filename)
+		wCtx.ErrCh <- err
+	}
+	kva := mapf(filename, string(content))
+	intermediate = append(intermediate, kva...)
+	shuffleFile, err := os.Create(shuffleName)
+	if err != nil {
+		log.Printf("cannot create %v", shuffleName)
+		wCtx.ErrCh <- err
+	}
+	enc := json.NewEncoder(shuffleFile)
+	err = enc.Encode(&intermediate)
+	if err != nil {
+		log.Printf("cannot encode %v", shuffleName)
+		wCtx.ErrCh <- err
+	}
+	wCtx.ShuffleName = shuffleName
+	wCtx.CompleteTask()
+}
+
+
+func (wCtx *WorkerCtx) askMapTask() {
 	args := struct{}{}
-	reply := TaskReply{}
-	call("Master.GiveTask", &args, &reply)
-	return  reply.Filename
+	call("Master.GiveMapTask", &args, wCtx)
 }
 
-func AskReduceTask() string {
+
+func (wCtx *WorkerCtx)CompleteTask() {
 	args := struct{}{}
-	reply := TaskReply{}
-	call("Master.ReduceTask", &args, &reply)
-	return  reply.Filename
-}
-
-func CompleteTask(shuffleName string) {
-	args := TaskArgs{}
-	args.Shuffle = shuffleName
-	reply := struct{}{}
-	call("Master.CompleteTask", &args, &reply)
+	call("Master.CompleteTask", &args, wCtx)
 }
 
 

@@ -30,6 +30,18 @@ type TaskArgs struct {
 	Shuffle string
 }
 
+type WorkerCtx struct {
+	WorkId 		string
+	ErrCh 		chan error
+	mapTaskChan	chan Task
+	Done    	chan int
+	ShuffleName	string
+}
+
+type Task struct {
+	FileName string
+}
+
 // Cook up a unique-ish UNIX-domain socket name
 // in /var/tmp, for the master.
 // Can't use the current directory since
