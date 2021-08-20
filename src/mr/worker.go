@@ -48,7 +48,7 @@ func Worker(mapf func(string, string) []KeyValue,
 	// CallExample()
 
 	// initial worker struct
-	var wCtx *WorkerCtx
+	var wCtx WorkerCtx
 	// every worker generate a workId
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	bytes := make([]byte, 10)
@@ -64,17 +64,17 @@ func Worker(mapf func(string, string) []KeyValue,
 		select {
 		case maptask := <-wCtx.mapTaskChan:
 			fmt.Println("do map task")
-			wCtx.doMapTask(maptask.FileName, mapf)
+			doMapTask(&wCtx,maptask.FileName, mapf)
 		case <-wCtx.Done:
 			fmt.Println("worker return")
 			return
 		default:
-			wCtx.askMapTask()
+			askMapTask(&wCtx)
 		}
 	}
 }
 
-func (wCtx *WorkerCtx)doMapTask(filename string, mapf func(string, string) []KeyValue){
+func doMapTask(wCtx *WorkerCtx, filename string, mapf func(string, string) []KeyValue){
 	shuffleName := "shuffle-" + filename
 	var intermediate []KeyValue
 	file, err := os.Open("../main/" + filename)
@@ -106,19 +106,17 @@ func (wCtx *WorkerCtx)doMapTask(filename string, mapf func(string, string) []Key
 		wCtx.ErrCh <- err
 	}
 	wCtx.ShuffleName = shuffleName
-	wCtx.CompleteTask()
+	CompleteTask(wCtx)
 }
 
 
-func (wCtx *WorkerCtx) askMapTask() {
-	fmt.Println("Master.GiveMapTask")
+func askMapTask(wCtx *WorkerCtx) {
 	args := struct{}{}
 	call("Master.GiveMapTask", &args, wCtx)
 }
 
 
-func (wCtx *WorkerCtx)CompleteTask() {
-	fmt.Println("Master.CompleteTask")
+func CompleteTask(wCtx *WorkerCtx) {
 	args := struct{}{}
 	call("Master.CompleteTask", &args, wCtx)
 }
