@@ -58,8 +58,8 @@ func Worker(mapf func(string, string) []KeyValue,
 	}
 	wCtx.WorkId = string(bytes)
 	// get a map task, in this case just get filename
-	wCtx.Done = make(chan int)
-	wCtx.mapTaskChan = make(chan Task)
+	wCtx.Done = make(chan int, 1)
+	wCtx.mapTaskChan = make(chan Task, 1)
 	for {
 		select {
 		case maptask := <-wCtx.mapTaskChan:
@@ -67,6 +67,7 @@ func Worker(mapf func(string, string) []KeyValue,
 			wCtx.doMapTask(maptask.FileName, mapf)
 		case <-wCtx.Done:
 			fmt.Println("worker return")
+			return
 		default:
 			wCtx.askMapTask()
 		}
@@ -110,12 +111,14 @@ func (wCtx WorkerCtx)doMapTask(filename string, mapf func(string, string) []KeyV
 
 
 func (wCtx *WorkerCtx) askMapTask() {
+	fmt.Println("Master.GiveMapTask")
 	args := struct{}{}
 	call("Master.GiveMapTask", &args, wCtx)
 }
 
 
 func (wCtx *WorkerCtx)CompleteTask() {
+	fmt.Println("Master.CompleteTask")
 	args := struct{}{}
 	call("Master.CompleteTask", &args, wCtx)
 }
