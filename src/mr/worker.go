@@ -48,7 +48,7 @@ func Worker(mapf func(string, string) []KeyValue,
 	// CallExample()
 
 	// initial worker struct
-	var wCtx WorkerCtx
+	var wCtx *WorkerCtx
 	// every worker generate a workId
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	bytes := make([]byte, 10)
@@ -76,7 +76,7 @@ func Worker(mapf func(string, string) []KeyValue,
 	}
 }
 
-func doMapTask(wCtx WorkerCtx, filename string, mapf func(string, string) []KeyValue){
+func doMapTask(wCtx *WorkerCtx, filename string, mapf func(string, string) []KeyValue){
 	shuffleName := "shuffle-" + filename
 	var intermediate []KeyValue
 	file, err := os.Open("../main/" + filename)
@@ -112,13 +112,13 @@ func doMapTask(wCtx WorkerCtx, filename string, mapf func(string, string) []KeyV
 }
 
 
-func askMapTask(wCtx WorkerCtx) {
-	call("Master.GiveMapTask", &wCtx, &wCtx)
+func askMapTask(wCtx *WorkerCtx) {
+	call("Master.GiveMapTask", wCtx, wCtx)
 }
 
 
-func CompleteTask(wCtx WorkerCtx) {
-	call("Master.CompleteTask", &wCtx, &wCtx)
+func CompleteTask(wCtx *WorkerCtx) {
+	call("Master.CompleteTask", wCtx, wCtx)
 }
 
 
