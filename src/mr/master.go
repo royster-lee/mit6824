@@ -31,7 +31,7 @@ func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
 func (m *Master) GiveMapTask(ctx *WorkerCtx, reply *WorkerCtx) error {
 	mapTask := <- m.mapTaskChan
 	fmt.Println("give " + ctx.WorkId + " : " + mapTask.FileName)
-	fmt.Println("xxxxxxxxx ", cap(ctx.MapTaskChan))
+	fmt.Printf("ctx = %v \n", ctx)
 	ctx.MapTaskChan <- mapTask
 	reply = ctx
 	return nil
