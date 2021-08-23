@@ -3,6 +3,7 @@ package mr
 import (
 	"fmt"
 	"log"
+	"sync/atomic"
 )
 import "net"
 import "os"
@@ -13,6 +14,7 @@ import "net/http"
 type Master struct {
 	// Your definitions here.
 	taskCh 		chan Task
+	fileCount	int32
 }
 
 // Your code here -- RPC handlers for the worker to call.
@@ -27,13 +29,15 @@ func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
 	return nil
 }
 func (m *Master) GiveMapTask(args *TaskArgs, reply *TaskReply) error {
-	task, ok := <- m.taskCh
-	if ok {
+	task := <- m.taskCh
+	atomic.AddInt32(&m.fileCount, -1)
+	if m.fileCount != -1 {
 		fmt.Println("give " + args.WorkId + " : " + task.FileName)
 		reply.Filename = task.FileName
 		reply.Done = 0
 	} else {
 		reply.Done = 1
+		m.Done()
 	}
 
 	return nil
@@ -70,7 +74,6 @@ func (m *Master) server() {
 	go func() {
 		err := http.Serve(l, nil)
 		if err != nil {
-
 		}
 	}()
 }
@@ -102,6 +105,7 @@ func MakeMaster(files []string, nReduce int) *Master {
 		task.FileName = fileName
 		m.taskCh <- task
 	}
+	m.fileCount = int32(length)
 	m.server()
 	return &m
 }
