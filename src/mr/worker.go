@@ -53,7 +53,7 @@ func Worker(mapf func(string, string) []KeyValue,
 	// get a map task, in this case just get filename
 	for {
 		askTask(struct{}{}, &task)
-		fmt.Printf("taskId = %d , taskType = %d \n", task.Id, task.TaskType)
+		fmt.Printf("task = %v \n", task)
 		if task.TaskType == 1 {
 			fmt.Println(" worker do map task : ", task.Id)
 			task.OutputFileName = doMapTask(task, mapf)

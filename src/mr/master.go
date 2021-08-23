@@ -49,11 +49,21 @@ func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
 
 func (m *Master) AskTask(_ struct{}, replyTask *Task) error {
 	if m.state == 0 {
-		replyTask = &(m.mapTasks[0])
+		mapTask := m.mapTasks[0]
 		m.mapTasks = m.mapTasks[1:]
+		replyTask.InputFileName = mapTask.InputFileName
+		replyTask.Id = mapTask.Id
+		replyTask.NReduce = mapTask.NReduce
+		replyTask.TaskType = 1
+		replyTask.NMap = mapTask.NMap
 	} else {
-		replyTask = &m.reduceTasks[0]
+		reduceTask := m.reduceTasks[0]
 		m.reduceTasks = m.reduceTasks[1:]
+		replyTask.InputFileName = reduceTask.InputFileName
+		replyTask.Id = reduceTask.Id
+		replyTask.NReduce = reduceTask.NReduce
+		replyTask.TaskType = 2
+		replyTask.NMap = reduceTask.NMap
 	}
 	return nil
 }
@@ -61,7 +71,6 @@ func (m *Master) AskTask(_ struct{}, replyTask *Task) error {
 
 
 func (m *Master) TaskFinish(requestTask *Task, _ *struct{}) error {
-	fmt.Println(string(rune(requestTask.Id)) + " finished")
 	// we assumption master will not crash, complete task
 	if requestTask.TaskType == 1 {
 		m.mapTaskFinishNum++
@@ -141,8 +150,6 @@ func MakeMaster(files []string, nReduce int) *Master {
 		task.NReduce = nReduce
 		m.mapTasks = append(m.mapTasks, task)
 	}
-	fmt.Printf("m = %v \n", &(m.mapTasks[0]))
-	fmt.Printf("m = %v \n", &m.mapTasks[0])
 	m.nReduce = 8
 	m.nMap = 8
 	m.server()
