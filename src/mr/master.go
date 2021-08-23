@@ -31,6 +31,7 @@ func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
 func (m *Master) GiveMapTask(args *TaskArgs, reply *TaskReply) error {
 	task := <- m.taskCh
 	atomic.AddInt32(&m.fileCount, -1)
+	fmt.Println("filecount : ", m.fileCount)
 	if m.fileCount != -1 {
 		fmt.Println("give " + args.WorkId + " : " + task.FileName)
 		reply.Filename = task.FileName
