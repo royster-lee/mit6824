@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"sort"
+	"strconv"
 )
 import "log"
 import "net/rpc"
@@ -78,11 +79,11 @@ func doReduceTask(task Task, reducef func(string, []string) string)  {
 	}
 	sort.Sort(ByKey(intermediate))
 	i := 0
-	oname := "mr-out-"
+	oname := "mr-out-0"
 
 	for i < len(intermediate) {
-		onameSuffix := ihash(intermediate[i].Key) % task.NReduce
-		ofile, _ := os.OpenFile(oname + string(rune(onameSuffix)), os.O_CREATE | os.O_APPEND, 0666)
+		suffix := ihash(intermediate[i].Key) % task.NReduce
+		ofile, _ := os.OpenFile(oname + strconv.Itoa(suffix), os.O_CREATE | os.O_APPEND, 0666)
 		j := i + 1
 		for j < len(intermediate) && intermediate[j].Key == intermediate[i].Key {
 			j++
