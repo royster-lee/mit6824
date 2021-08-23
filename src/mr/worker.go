@@ -79,7 +79,7 @@ func doReduceTask(task Task, reducef func(string, []string) string)  {
 	}
 	sort.Sort(ByKey(intermediate))
 	i := 0
-	oname := "mr-out-0"
+	oname := "mr-out-"
 
 	for i < len(intermediate) {
 		suffix := ihash(intermediate[i].Key) % task.NReduce
@@ -94,6 +94,7 @@ func doReduceTask(task Task, reducef func(string, []string) string)  {
 		}
 		output := reducef(intermediate[i].Key, values)
 
+		fmt.Printf("xxxxxxx = %v %v\n", intermediate[i].Key, output)
 		// this is the correct format for each line of Reduce output.
 		fmt.Fprintf(ofile, "%v %v\n", intermediate[i].Key, output)
 
