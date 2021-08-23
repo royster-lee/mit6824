@@ -82,7 +82,7 @@ func doReduceTask(task Task, reducef func(string, []string) string)  {
 
 	for i < len(intermediate) {
 		onameSuffix := ihash(intermediate[i].Key) % task.NReduce
-		ofile, _ := os.OpenFile(oname + string(onameSuffix), os.O_CREATE | os.O_APPEND, 0666)
+		ofile, _ := os.OpenFile(oname + string(rune(onameSuffix)), os.O_CREATE | os.O_APPEND, 0666)
 		j := i + 1
 		for j < len(intermediate) && intermediate[j].Key == intermediate[i].Key {
 			j++
