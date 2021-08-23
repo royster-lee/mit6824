@@ -88,7 +88,6 @@ func (m *Master) TaskFinish(requestTask *Task, _ *struct{}) error {
 		m.reduceTasks = append(m.reduceTasks, task)
 		if m.mapTaskFinishNum == m.nMap {
 			fmt.Println("map phrase finish")
-			fmt.Printf("reduce tasks = %v \n", m.reduceTasks)
 			m.state = 1
 		}
 	} else {
@@ -98,8 +97,6 @@ func (m *Master) TaskFinish(requestTask *Task, _ *struct{}) error {
 			m.state = 2
 		}
 	}
-
-
 	return nil
 }
 
