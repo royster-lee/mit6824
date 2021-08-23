@@ -3,19 +3,37 @@ package mr
 import (
 	"fmt"
 	"log"
-	"sync/atomic"
+	"sync"
 )
 import "net"
 import "os"
 import "net/rpc"
 import "net/http"
 
+var mu sync.Mutex
 
 type Master struct {
 	// Your definitions here.
-	taskCh 		chan Task
-	fileCount	int32
+	nReduce             int
+	nMap                int
+	mapTasks            []Task
+	reduceTasks         []Task
+	state               int // MASTER_INIT;MAP_FINISHED;REDUCE_FINISHED
+	mapTaskFinishNum    int
+	reduceTaskFinishNum int
 }
+
+type Task struct {
+	State          int // TASK_INIT;TASK_PROCESSING;TASK_DONE
+	InputFileName  string
+	Id             int
+	OutputFileName string
+	TaskType       int // MAP_TASK;REDUCE_TASK
+	NReduce        int
+	NMap           int
+	StartTime      int64
+}
+
 
 // Your code here -- RPC handlers for the worker to call.
 
@@ -28,29 +46,44 @@ func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
 	reply.Y = args.X + 1
 	return nil
 }
-func (m *Master) GiveMapTask(args *TaskArgs, reply *TaskReply) error {
-	atomic.AddInt32(&m.fileCount, -1)
-	fmt.Println("filecount : ", m.fileCount)
-	if m.fileCount != -1 {
-		task := <- m.taskCh
-		fmt.Println("give " + args.WorkId + " : " + task.FileName)
-		reply.Filename = task.FileName
-		reply.Done = 0
+
+func (m *Master) AskTask(_ struct{}, replyTask *Task) error {
+	if m.state == 0 {
+		replyTask = &m.mapTasks[0]
+		m.mapTasks = m.mapTasks[1:]
 	} else {
-		reply.Done = 1
-		m.Done()
+		replyTask = &m.reduceTasks[0]
+		m.reduceTasks = m.reduceTasks[1:]
+	}
+	return nil
+}
+
+
+
+func (m *Master) TaskFinish(requestTask *Task, _ struct{}) error {
+	fmt.Println(string(rune(requestTask.Id)) + " finished")
+	// we assumption master will not crash, complete task
+	if requestTask.TaskType == 1 {
+		m.mapTaskFinishNum++
+		var task Task
+		task.TaskType = 2
+		task.InputFileName = requestTask.OutputFileName
+		task.Id = requestTask.Id
+		task.NReduce = requestTask.NReduce
+		m.reduceTasks = append(m.reduceTasks, task)
+		if m.mapTaskFinishNum == m.nMap {
+			m.state = 1
+		}
+	} else {
+		m.reduceTaskFinishNum++
+		if m.reduceTaskFinishNum == m.nReduce {
+			m.state = 2
+		}
 	}
 
+
 	return nil
 }
-
-func (m *Master) CompleteTask(args *TaskArgs, reply *TaskReply) error {
-	fmt.Println(args.WorkId + " generate a shuffle : " + args.ShuffleName)
-	return nil
-}
-
-
-
 
 //
 // start a thread that listens for RPCs from worker.go
@@ -84,7 +117,7 @@ func (m *Master) server() {
 // if the entire job has finished.
 //
 func (m *Master) Done() bool {
-	ret := false
+	ret := m.state == 2
 
 	// Your code here.
 	return ret
@@ -99,14 +132,17 @@ func MakeMaster(files []string, nReduce int) *Master {
 	m := Master{}
 	// Your code here.
 	length := len(files)
-	m.taskCh = make(chan Task, length)
 	var task Task
 	for i:=0; i< length; i++ {
-		fileName := files[i]
-		task.FileName = fileName
-		m.taskCh <- task
+		task.InputFileName = files[i]
+		task.TaskType = 1
+		task.Id = i
+		task.NMap = 8
+		task.NReduce = nReduce
+		m.mapTasks = append(m.mapTasks, task)
 	}
-	m.fileCount = int32(length)
+	m.nReduce = 8
+	m.nMap = 8
 	m.server()
 	return &m
 }

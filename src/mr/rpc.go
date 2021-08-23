@@ -24,7 +24,7 @@ type ExampleReply struct {
 
 type TaskReply struct {
 	Filename 	string
-	Done 		int
+	Done 		bool
 }
 
 type TaskArgs struct {
@@ -32,16 +32,6 @@ type TaskArgs struct {
 	ShuffleName	string
 }
 
-type WorkerCtx struct {
-	WorkId 		string
-	ErrCh 		chan error
-	MapTaskChan	chan Task
-	Done    	chan int
-}
-
-type Task struct {
-	FileName string
-}
 
 // Cook up a unique-ish UNIX-domain socket name
 // in /var/tmp, for the master.

@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"os"
-	"time"
+	"sort"
 )
 import "log"
 import "net/rpc"
@@ -48,47 +47,78 @@ func Worker(mapf func(string, string) []KeyValue,
 	// CallExample()
 
 	// initial worker struct
-	var args TaskArgs
-	var reply TaskReply
+	var task Task
 	// every worker generate a workId
-	r := rand.New(rand.NewSource(time.Now().Unix()))
-	bytes := make([]byte, 10)
-	for i := 0; i < 10; i++ {
-		b := r.Intn(26) + 65
-		bytes[i] = byte(b)
-	}
-	args.WorkId = string(bytes)
-	fmt.Println("wCtx.WorkId : ", args.WorkId)
 
 	// get a map task, in this case just get filename
 	for {
-		askMapTask(&args, &reply)
-		if reply.Done == 1 {
-			fmt.Println(" worker return ")
-			return
+		askTask(struct{}{}, &task)
+		fmt.Printf("taskId = %d , taskType = %d \n", task.Id, task.TaskType)
+		if task.TaskType == 1 {
+			fmt.Println(" worker do map task : ", task.Id)
+			task.OutputFileName = doMapTask(task, mapf)
+		} else {
+			fmt.Println(" worker do reduce task : ", task.Id)
+			doReduceTask(task, reducef)
 		}
-		fmt.Println(" worker do task : ", reply.Filename)
-		args.ShuffleName = doMapTask(reply.Filename, mapf)
-		completeTask(&args, &reply)
+		finishTask(&task, struct{}{})
 	}
 }
 
-func doMapTask(filename string, mapf func(string, string) []KeyValue) string{
-	shuffleName := "shuffle-" + filename
-	var intermediate []KeyValue
-	file, err := os.Open("../main/" + filename)
+func doReduceTask(task Task, reducef func(string, []string) string)  {
+	fp, err := os.Open("../main/" + task.InputFileName)
 	if err != nil {
-		log.Printf("cannot open %v", filename)
+		log.Printf("cannot open %v", task.InputFileName)
+	}
+	dec := json.NewDecoder(fp)
+	var intermediate []KeyValue
+	err = dec.Decode(&intermediate)
+	if err != nil {
+		log.Printf("cannot decode %v", task.InputFileName)
+	}
+	sort.Sort(ByKey(intermediate))
+	i := 0
+	oname := "mr-out-"
+
+	for i < len(intermediate) {
+		onameSuffix := ihash(intermediate[i].Key) % task.NReduce
+		ofile, _ := os.OpenFile(oname + string(onameSuffix), os.O_CREATE | os.O_APPEND, 0666)
+		j := i + 1
+		for j < len(intermediate) && intermediate[j].Key == intermediate[i].Key {
+			j++
+		}
+		values := []string{}
+		for k := i; k < j; k++ {
+			values = append(values, intermediate[k].Value)
+		}
+		output := reducef(intermediate[i].Key, values)
+
+		// this is the correct format for each line of Reduce output.
+		fmt.Fprintf(ofile, "%v %v\n", intermediate[i].Key, output)
+
+		i = j
+	}
+
+}
+
+
+
+func doMapTask(task Task, mapf func(string, string) []KeyValue) string{
+	shuffleName := "shuffle-" + task.InputFileName
+	var intermediate []KeyValue
+	file, err := os.Open("../main/" + task.InputFileName)
+	if err != nil {
+		log.Printf("cannot open %v", task.InputFileName)
 	}
 	content, err := ioutil.ReadAll(file)
 	if err != nil {
-		log.Printf("cannot open %v", filename)
+		log.Printf("cannot open %v", task.InputFileName)
 	}
 	err = file.Close()
 	if err != nil {
-		log.Printf("cannot close %v", filename)
+		log.Printf("cannot close %v", task.InputFileName)
 	}
-	kva := mapf(filename, string(content))
+	kva := mapf(task.InputFileName, string(content))
 	intermediate = append(intermediate, kva...)
 	shuffleFile, err := os.Create(shuffleName)
 	if err != nil {
@@ -103,13 +133,13 @@ func doMapTask(filename string, mapf func(string, string) []KeyValue) string{
 }
 
 
-func askMapTask(args *TaskArgs, reply *TaskReply) {
-	call("Master.GiveMapTask", args, reply)
+func askTask(args struct{}, replyTask *Task) {
+	call("Master.AskTask", args, replyTask)
 }
 
 
-func completeTask(args *TaskArgs, reply *TaskReply) {
-	call("Master.CompleteTask", args, reply)
+func finishTask(requestTask *Task, reply struct{}) {
+	call("Master.TaskFinish", requestTask, reply)
 }
 
 
