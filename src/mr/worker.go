@@ -113,8 +113,9 @@ func doMapTask(wCtx *WorkerCtx, filename string, mapf func(string, string) []Key
 
 
 func askMapTask(wCtx *WorkerCtx) {
+	fmt.Printf("ctx = %v \n", wCtx)
 	call("Master.GiveMapTask", wCtx, wCtx)
-	println("------------------------ ")
+
 	task := <- wCtx.MapTaskChan
 	println("++++++++++++ " , task.FileName)
 }
