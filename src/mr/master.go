@@ -29,10 +29,11 @@ func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
 	return nil
 }
 func (m *Master) GiveMapTask(ctx *WorkerCtx, reply *WorkerCtx) error {
-	reply = ctx
 	mapTask := <- m.mapTaskChan
 	fmt.Println("give " + ctx.WorkId + " : " + mapTask.FileName)
-	reply.mapTaskChan <- mapTask
+	fmt.Println("xxxxxxxxx ", cap(ctx.mapTaskChan))
+	ctx.mapTaskChan <- mapTask
+	reply = ctx
 	return nil
 }
 
