@@ -22,15 +22,6 @@ type ExampleReply struct {
 	Y int
 }
 
-type TaskReply struct {
-	Filename 	string
-	Done 		bool
-}
-
-type TaskArgs struct {
-	WorkId 		string
-	ShuffleName	string
-}
 
 
 // Cook up a unique-ish UNIX-domain socket name
