@@ -12,9 +12,7 @@ import "net/http"
 
 type Master struct {
 	// Your definitions here.
-	mapTaskChan 	chan Task
-	reduceTaskChan 	chan Task
-	fileCount		int
+	taskCh 		chan Task
 }
 
 // Your code here -- RPC handlers for the worker to call.
@@ -28,23 +26,21 @@ func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
 	reply.Y = args.X + 1
 	return nil
 }
-func (m *Master) GiveMapTask(ctx *WorkerCtx, reply *WorkerCtx) error {
-	mapTask := <- m.mapTaskChan
-	fmt.Println("give " + ctx.WorkId + " : " + mapTask.FileName)
-	fmt.Printf("ctx = %v \n", ctx)
-	ctx.MapTaskChan <- mapTask
-	reply = ctx
+func (m *Master) GiveMapTask(args *TaskArgs, reply *TaskReply) error {
+	task, ok := <- m.taskCh
+	if ok {
+		fmt.Println("give " + args.WorkId + " : " + task.FileName)
+		reply.Filename = task.FileName
+		reply.Done = 0
+	} else {
+		reply.Done = 1
+	}
+
 	return nil
 }
 
-func (m *Master) CompleteTask(ctx *WorkerCtx, reply *WorkerCtx) error {
-	fmt.Println(ctx.WorkId + " created a shuffle : " + ctx.ShuffleName)
-	m.fileCount--
-	if m.fileCount == 0 {
-		ctx.Done <- 1
-		m.Done()
-	}
-	reply = ctx
+func (m *Master) CompleteTask(args *TaskArgs, reply *TaskReply) error {
+	fmt.Println(args.WorkId + " generate a shuffle : " + args.ShuffleName)
 	return nil
 }
 
@@ -99,14 +95,13 @@ func MakeMaster(files []string, nReduce int) *Master {
 	m := Master{}
 	// Your code here.
 	length := len(files)
-	m.mapTaskChan = make(chan Task, length)
+	m.taskCh = make(chan Task, length)
 	var task Task
-	for i:=0; i<length; i++ {
-		task.FileName = files[i]
-		m.mapTaskChan <- task
+	for i:=0; i< length; i++ {
+		fileName := files[i]
+		task.FileName = fileName
+		m.taskCh <- task
 	}
-	m.reduceTaskChan = make(chan Task, nReduce)
-	m.fileCount = len(files)
 	m.server()
 	return &m
 }

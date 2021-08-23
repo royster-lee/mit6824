@@ -48,7 +48,8 @@ func Worker(mapf func(string, string) []KeyValue,
 	// CallExample()
 
 	// initial worker struct
-	var wCtx WorkerCtx
+	var args TaskArgs
+	var reply TaskReply
 	// every worker generate a workId
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	bytes := make([]byte, 10)
@@ -56,74 +57,61 @@ func Worker(mapf func(string, string) []KeyValue,
 		b := r.Intn(26) + 65
 		bytes[i] = byte(b)
 	}
-	wCtx.WorkId = string(bytes)
-	fmt.Println("wCtx.WorkId : ", wCtx.WorkId)
+	args.WorkId = string(bytes)
+	fmt.Println("wCtx.WorkId : ", args.WorkId)
+
 	// get a map task, in this case just get filename
-	wCtx.Done = make(chan int, 1)
-	wCtx.MapTaskChan = make(chan Task, 1)
 	for {
-		select {
-		case maptask := <-wCtx.MapTaskChan:
-			fmt.Println("do map task")
-			doMapTask(&wCtx, maptask.FileName, mapf)
-		case <-wCtx.Done:
-			fmt.Println("worker return")
+		askMapTask(&args, &reply)
+		if reply.Done == 1 {
+			fmt.Println(" worker return ")
 			return
-		default:
-			fmt.Println("askMapTask")
-			askMapTask(&wCtx)
 		}
+		fmt.Println(" worker do task : ", reply.Filename)
+		args.ShuffleName = doMapTask(reply.Filename, mapf)
+		completeTask(&args, &reply)
 	}
 }
 
-func doMapTask(wCtx *WorkerCtx, filename string, mapf func(string, string) []KeyValue){
+func doMapTask(filename string, mapf func(string, string) []KeyValue) string{
 	shuffleName := "shuffle-" + filename
 	var intermediate []KeyValue
 	file, err := os.Open("../main/" + filename)
 	if err != nil {
 		log.Printf("cannot open %v", filename)
-		wCtx.ErrCh <- err
 	}
 	content, err := ioutil.ReadAll(file)
 	if err != nil {
 		log.Printf("cannot open %v", filename)
-		wCtx.ErrCh <- err
 	}
 	err = file.Close()
 	if err != nil {
 		log.Printf("cannot close %v", filename)
-		wCtx.ErrCh <- err
 	}
 	kva := mapf(filename, string(content))
 	intermediate = append(intermediate, kva...)
 	shuffleFile, err := os.Create(shuffleName)
 	if err != nil {
 		log.Printf("cannot create %v", shuffleName)
-		wCtx.ErrCh <- err
 	}
 	enc := json.NewEncoder(shuffleFile)
 	err = enc.Encode(&intermediate)
 	if err != nil {
 		log.Printf("cannot encode %v", shuffleName)
-		wCtx.ErrCh <- err
 	}
-	wCtx.ShuffleName = shuffleName
-	CompleteTask(wCtx)
+	return shuffleName
 }
 
 
-func askMapTask(wCtx *WorkerCtx) {
-	fmt.Printf("ctx = %v \n", wCtx)
-	call("Master.GiveMapTask", wCtx, wCtx)
-
-	task := <- wCtx.MapTaskChan
-	println("++++++++++++ " , task.FileName)
+func askMapTask(args *TaskArgs, reply *TaskReply) {
+	call("Master.GiveMapTask", args, reply)
 }
 
 
-func CompleteTask(wCtx *WorkerCtx) {
-	call("Master.CompleteTask", wCtx, wCtx)
+func completeTask(args *TaskArgs, reply *TaskReply) {
+	call("Master.CompleteTask", args, reply)
 }
+
 
 
 //

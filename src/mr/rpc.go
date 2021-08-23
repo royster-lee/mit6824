@@ -23,11 +23,13 @@ type ExampleReply struct {
 }
 
 type TaskReply struct {
-	Filename string
+	Filename 	string
+	Done 		int
 }
 
 type TaskArgs struct {
-	Shuffle string
+	WorkId 		string
+	ShuffleName	string
 }
 
 type WorkerCtx struct {
@@ -35,7 +37,6 @@ type WorkerCtx struct {
 	ErrCh 		chan error
 	MapTaskChan	chan Task
 	Done    	chan int
-	ShuffleName	string
 }
 
 type Task struct {
