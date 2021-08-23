@@ -33,7 +33,7 @@ type TaskArgs struct {
 type WorkerCtx struct {
 	WorkId 		string
 	ErrCh 		chan error
-	mapTaskChan	chan Task
+	MapTaskChan	chan Task
 	Done    	chan int
 	ShuffleName	string
 }
