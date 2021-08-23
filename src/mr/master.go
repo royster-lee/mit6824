@@ -54,7 +54,7 @@ func (m *Master) AskTask(_ struct{}, replyTask *Task) error {
 		replyTask.InputFileName = mapTask.InputFileName
 		replyTask.Id = mapTask.Id
 		replyTask.NReduce = mapTask.NReduce
-		replyTask.TaskType = 1
+		replyTask.TaskType = mapTask.TaskType
 		replyTask.NMap = mapTask.NMap
 	} else {
 		reduceTask := m.reduceTasks[0]
@@ -62,7 +62,7 @@ func (m *Master) AskTask(_ struct{}, replyTask *Task) error {
 		replyTask.InputFileName = reduceTask.InputFileName
 		replyTask.Id = reduceTask.Id
 		replyTask.NReduce = reduceTask.NReduce
-		replyTask.TaskType = 2
+		replyTask.TaskType = reduceTask.TaskType
 		replyTask.NMap = reduceTask.NMap
 	}
 	return nil
@@ -81,6 +81,8 @@ func (m *Master) TaskFinish(requestTask *Task, _ *struct{}) error {
 		task.NReduce = requestTask.NReduce
 		m.reduceTasks = append(m.reduceTasks, task)
 		if m.mapTaskFinishNum == m.nMap {
+			fmt.Println("map phrase finish")
+			fmt.Printf("reduce tasks = %v \n", m.reduceTasks)
 			m.state = 1
 		}
 	} else {
