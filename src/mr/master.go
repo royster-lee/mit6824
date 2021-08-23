@@ -142,6 +142,7 @@ func MakeMaster(files []string, nReduce int) *Master {
 		m.mapTasks = append(m.mapTasks, task)
 	}
 	fmt.Printf("m = %v \n", &(m.mapTasks[0]))
+	fmt.Printf("m = %v \n", &m.mapTasks[0])
 	m.nReduce = 8
 	m.nMap = 8
 	m.server()
