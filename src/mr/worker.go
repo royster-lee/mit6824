@@ -114,6 +114,9 @@ func doMapTask(wCtx *WorkerCtx, filename string, mapf func(string, string) []Key
 
 func askMapTask(wCtx *WorkerCtx) {
 	call("Master.GiveMapTask", wCtx, wCtx)
+	println("------------------------ ")
+	task := <- wCtx.mapTaskChan
+	println("++++++++++++ " , task.FileName)
 }
 
 
