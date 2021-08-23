@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"time"
 )
 import "log"
 import "net/rpc"
@@ -20,6 +21,13 @@ type KeyValue struct {
 	Key   string
 	Value string
 }
+
+const (
+	MapJob = iota
+	ReduceJob
+	WaitJob
+	CompleteJob
+)
 type ByKey []KeyValue
 
 func (a ByKey) Len() int           { return len(a) }
@@ -43,35 +51,21 @@ func ihash(key string) int {
 func Worker(mapf func(string, string) []KeyValue,
 	reducef func(string, []string) string) {
 
-	// Your worker implementation here.
-	// uncomment to send the Example RPC to the master.
-	// CallExample()
-
-	// initial worker struct
-	var task Task
-	// every worker generate a workId
-
-	// get a map task, in this case just get filename
 	for {
-		askTask(struct{}{}, &task)
-		fmt.Printf("task = %v \n", task)
-
-		if task.TaskType == 1 {
-			if task.State == 1 {
-				break
-			}
-			fmt.Println(" worker do map task : ", task.Id)
-			task.OutputFileName = doMapTask(task, mapf)
-		} else {
-			if task.State == 1 {
-				fmt.Println("worker return")
-				return
-			}
-			fmt.Println(" worker do reduce task : ", task.Id)
-			doReduceTask(task, reducef)
-
+		response := doHeartbeat()
+		log.Printf("Worker: receive coordinator's heartbeat %v \n", response)
+		switch response.JobType {
+		case MapJob:
+			doMapTask(mapF, response)
+		case ReduceJob:
+			doReduceTask(reduceF, response)
+		case WaitJob:
+			time.Sleep(1 * time.Second)
+		case CompleteJob:
+			return
+		default:
+			panic(fmt.Sprintf("unexpected jobType %v", response.JobType))
 		}
-		finishTask(&task, struct{}{})
 	}
 }
 
@@ -114,8 +108,6 @@ func doReduceTask(task Task, reducef func(string, []string) string)  {
 
 }
 
-
-
 func doMapTask(task Task, mapf func(string, string) []KeyValue) string{
 	shuffleName := "shuffle-" + task.InputFileName
 	var intermediate []KeyValue
@@ -145,40 +137,15 @@ func doMapTask(task Task, mapf func(string, string) []KeyValue) string{
 	return shuffleName
 }
 
-
-func askTask(args struct{}, replyTask *Task) {
-	call("Master.AskTask", &args, replyTask)
+func doHeartbeat() HeartbeatResponse{
+	var response HeartbeatResponse
+	var request HeartbeatRequest
+	call("Coordinator.Heartbeat", &request, &response)
+	return response
 }
 
 
-func finishTask(requestTask *Task, reply struct{}) {
-	call("Master.TaskFinish", requestTask, &reply)
-}
 
-
-
-//
-// example function to show how to make an RPC call to the master.
-//
-// the RPC argument and reply types are defined in rpc.go.
-//
-func CallExample() {
-
-	// declare an argument structure.
-	args := ExampleArgs{}
-
-	// fill in the argument(s).
-	args.X = 99
-
-	// declare a reply structure.
-	reply := ExampleReply{}
-
-	// send the RPC request, wait for the reply.
-	call("Master.Example", &args, &reply)
-
-	// reply.Y should be 100.
-	fmt.Printf("reply.Y %v\n", reply.Y)
-}
 
 //
 // send an RPC request to the master, wait for the response.
