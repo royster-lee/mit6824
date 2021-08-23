@@ -94,9 +94,11 @@ func doReduceTask(task Task, reducef func(string, []string) string)  {
 		}
 		output := reducef(intermediate[i].Key, values)
 
-		fmt.Printf("xxxxxxx = %v %v\n", intermediate[i].Key, output)
 		// this is the correct format for each line of Reduce output.
-		fmt.Fprintf(ofile, "%v %v\n", intermediate[i].Key, output)
+		_, err := fmt.Fprintf(ofile, "%v %v\n", intermediate[i].Key, output)
+		if err != nil {
+			log.Fatalf("error = %v \n", err)
+		}
 
 		i = j
 	}
