@@ -134,12 +134,12 @@ func doMapTask(task Task, mapf func(string, string) []KeyValue) string{
 
 
 func askTask(args struct{}, replyTask *Task) {
-	call("Master.AskTask", args, replyTask)
+	call("Master.AskTask", &args, replyTask)
 }
 
 
 func finishTask(requestTask *Task, reply struct{}) {
-	call("Master.TaskFinish", requestTask, reply)
+	call("Master.TaskFinish", requestTask, &reply)
 }
 
 
