@@ -48,7 +48,7 @@ func Worker(mapf func(string, string) []KeyValue,
 	// CallExample()
 
 	// initial worker struct
-	var wCtx *WorkerCtx
+	var wCtx WorkerCtx
 	// every worker generate a workId
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	bytes := make([]byte, 10)
@@ -65,13 +65,13 @@ func Worker(mapf func(string, string) []KeyValue,
 		select {
 		case maptask := <-wCtx.mapTaskChan:
 			fmt.Println("do map task")
-			doMapTask(wCtx, maptask.FileName, mapf)
+			doMapTask(&wCtx, maptask.FileName, mapf)
 		case <-wCtx.Done:
 			fmt.Println("worker return")
 			return
 		default:
 			fmt.Println("askMapTask")
-			askMapTask(wCtx)
+			askMapTask(&wCtx)
 		}
 	}
 }
