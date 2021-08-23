@@ -50,6 +50,7 @@ func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
 func (m *Master) AskTask(_ *struct{}, replyTask *Task) error {
 	if m.state == 0 {
 		if len(m.mapTasks) == 0 {
+			replyTask.State = 1
 			return nil
 		}
 		mapTask := m.mapTasks[0]
@@ -61,6 +62,7 @@ func (m *Master) AskTask(_ *struct{}, replyTask *Task) error {
 		replyTask.NMap = mapTask.NMap
 	} else {
 		if len(m.reduceTasks) == 0 {
+			replyTask.State = 1
 			return nil
 		}
 		reduceTask := m.reduceTasks[0]

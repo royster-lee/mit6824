@@ -55,12 +55,21 @@ func Worker(mapf func(string, string) []KeyValue,
 	for {
 		askTask(struct{}{}, &task)
 		fmt.Printf("task = %v \n", task)
+
 		if task.TaskType == 1 {
+			if task.State == 1 {
+				break
+			}
 			fmt.Println(" worker do map task : ", task.Id)
 			task.OutputFileName = doMapTask(task, mapf)
 		} else {
+			if task.State == 1 {
+				fmt.Println("worker return")
+				return
+			}
 			fmt.Println(" worker do reduce task : ", task.Id)
 			doReduceTask(task, reducef)
+
 		}
 		finishTask(&task, struct{}{})
 	}
@@ -83,7 +92,7 @@ func doReduceTask(task Task, reducef func(string, []string) string)  {
 
 	for i < len(intermediate) {
 		suffix := ihash(intermediate[i].Key) % task.NReduce
-		ofile, _ := os.OpenFile(oname + strconv.Itoa(suffix), os.O_CREATE | os.O_WRONLY, 0666)
+		ofile, _ := os.OpenFile(oname + strconv.Itoa(suffix), os.O_CREATE | os.O_APPEND | os.O_WRONLY, 0666)
 		j := i + 1
 		for j < len(intermediate) && intermediate[j].Key == intermediate[i].Key {
 			j++
