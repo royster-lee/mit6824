@@ -70,6 +70,7 @@ func Worker(mapf func(string, string) []KeyValue,
 			fmt.Println("worker return")
 			return
 		default:
+			fmt.Println("askMapTask")
 			askMapTask(wCtx)
 		}
 	}
@@ -112,14 +113,12 @@ func doMapTask(wCtx WorkerCtx, filename string, mapf func(string, string) []KeyV
 
 
 func askMapTask(wCtx WorkerCtx) {
-	args := struct{}{}
-	call("Master.GiveMapTask", &args, &wCtx)
+	call("Master.GiveMapTask", &wCtx, &wCtx)
 }
 
 
 func CompleteTask(wCtx WorkerCtx) {
-	args := struct{}{}
-	call("Master.CompleteTask", &args, &wCtx)
+	call("Master.CompleteTask", &wCtx, &wCtx)
 }
 
 
