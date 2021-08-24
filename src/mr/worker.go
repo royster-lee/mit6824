@@ -3,16 +3,15 @@ package mr
 import (
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"io/ioutil"
+	"log"
+	"net/rpc"
 	"os"
 	"sort"
 	"strconv"
 	"time"
 )
-import "log"
-import "net/rpc"
-import "hash/fnv"
-
 
 //
 // Map functions return a slice of KeyValue.
@@ -21,6 +20,14 @@ type KeyValue struct {
 	Key   string
 	Value string
 }
+
+const (
+	MapJob = iota
+	ReduceJob
+	WaitJob
+	CompleteJob
+)
+
 type ByKey []KeyValue
 
 func (a ByKey) Len() int           { return len(a) }
@@ -36,7 +43,6 @@ func ihash(key string) int {
 	h.Write([]byte(key))
 	return int(h.Sum32() & 0x7fffffff)
 }
-
 
 //
 // main/mrworker.go calls this function.
@@ -69,7 +75,7 @@ func Worker(mapf func(string, string) []KeyValue,
 	}
 }
 
-func doReduceTask(task Task, reducef func(string, []string) string)  {
+func doReduceTask(task Task, reducef func(string, []string) string) {
 	fp, err := os.Open("../main/" + task.InputFileName)
 	if err != nil {
 		log.Printf("cannot open %v", task.InputFileName)
@@ -86,7 +92,7 @@ func doReduceTask(task Task, reducef func(string, []string) string)  {
 
 	for i < len(intermediate) {
 		suffix := ihash(intermediate[i].Key) % task.NReduce
-		ofile, _ := os.OpenFile(oname + strconv.Itoa(suffix), os.O_CREATE | os.O_APPEND | os.O_WRONLY, 0666)
+		ofile, _ := os.OpenFile(oname+strconv.Itoa(suffix), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 		j := i + 1
 		for j < len(intermediate) && intermediate[j].Key == intermediate[i].Key {
 			j++
@@ -108,7 +114,7 @@ func doReduceTask(task Task, reducef func(string, []string) string)  {
 
 }
 
-func doMapTask(task Task, mapf func(string, string) []KeyValue) string{
+func doMapTask(task Task, mapf func(string, string) []KeyValue) string {
 	shuffleName := "shuffle-" + task.InputFileName
 	var intermediate []KeyValue
 	file, _ := os.Open("../main/" + task.InputFileName)
@@ -124,37 +130,11 @@ func doMapTask(task Task, mapf func(string, string) []KeyValue) string{
 	return shuffleName
 }
 
-
 func doHeartBreak(responseMsg *ResponseMsg) {
 	call("Master.HeartBreak", &struct{}{}, responseMsg)
 }
 func doReport(requestMsg *RequestMsg) {
 	call("Master.HeartBreak", requestMsg, &struct{}{})
-}
-
-
-
-//
-// example function to show how to make an RPC call to the master.
-//
-// the RPC argument and reply types are defined in rpc.go.
-//
-func CallExample() {
-
-	// declare an argument structure.
-	args := ExampleArgs{}
-
-	// fill in the argument(s).
-	args.X = 99
-
-	// declare a reply structure.
-	reply := ExampleReply{}
-
-	// send the RPC request, wait for the reply.
-	call("Master.Example", &args, &reply)
-
-	// reply.Y should be 100.
-	fmt.Printf("reply.Y %v\n", reply.Y)
 }
 
 //

@@ -46,7 +46,16 @@ type ResponseMsg struct {
 	JobType		int
 	Job			Task
 }
+type HeartbeatResponse struct {
+	JobType int
+}
+type HeartbeatRequest struct {
 
+}
+type ReportRequest struct {
+
+}
+type ReportResponse struct {
 
 type RequestMsg struct {
 	JobType		int
@@ -62,13 +71,10 @@ const (
 
 // Your code here -- RPC handlers for the worker to call.
 
-//
-// an example RPC handler.
-//
-// the RPC argument and reply types are defined in rpc.go.
-//
-func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
-	reply.Y = args.X + 1
+func (c *Coordinator) Heartbeat(request *HeartbeatRequest, response *HeartbeatResponse) error {
+	msg := heartbeatMsg{response, make(chan struct{})}
+	c.heartbeatCh <- msg
+	<-msg.ok
 	return nil
 }
 
@@ -122,6 +128,13 @@ func (m *Master) HeartBreak(_ *struct{}, responseMsg *ResponseMsg) error {
 	return nil
 }
 
+func (c *Coordinator) schedule() {
+	c.initMapPhase()
+	for {
+		select {
+		case msg := <-c.heartbeatCh:
+			switch c.phase {
+			case MapPhase:
 
 
 func (m *Master) Report(requestMsg *RequestMsg, _ *struct{}) error {
@@ -153,14 +166,20 @@ func (m *Master) Report(requestMsg *RequestMsg, _ *struct{}) error {
 		}
 
 	}
-	return nil
 }
+
+func (c *Coordinator) giveTask() Task{
+	var task Task
+	return task
+}
+
+
 
 //
 // start a thread that listens for RPCs from worker.go
 //
-func (m *Master) server() {
-	err := rpc.Register(m)
+func (c *Coordinator) server() {
+	err := rpc.Register(c)
 	if err != nil {
 		return 
 	}
@@ -181,14 +200,15 @@ func (m *Master) server() {
 		if err != nil {
 		}
 	}()
+	go c.schedule()
 }
 
 //
 // main/mrmaster.go calls Done() periodically to find out
 // if the entire job has finished.
 //
-func (m *Master) Done() bool {
-	ret := m.state == 2
+func (c *Coordinator) Done() bool {
+	ret := false
 
 	// Your code here.
 	return ret
@@ -199,8 +219,8 @@ func (m *Master) Done() bool {
 // main/mrmaster.go calls this function.
 // nReduce is the number of reduce tasks to use.
 //
-func MakeMaster(files []string, nReduce int) *Master {
-	m := Master{}
+func MakeMaster(files []string, nReduce int) *Coordinator {
+	c := Coordinator{}
 	// Your code here.
 	length := len(files)
 	var task Task
