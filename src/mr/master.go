@@ -3,14 +3,12 @@ package mr
 import (
 	"fmt"
 	"log"
-	"sync"
 )
 import "net"
 import "os"
 import "net/rpc"
 import "net/http"
 
-var mu sync.Mutex
 
 type Master struct {
 	// Your definitions here.
@@ -19,21 +17,48 @@ type Master struct {
 	mapTasks            []Task
 	reduceTasks         []Task
 	state               int // MASTER_INIT;MAP_FINISHED;REDUCE_FINISHED
-	mapTaskFinishNum    int
-	reduceTaskFinishNum int
+	reduceFiles			map[string]bool
+	finishedMapNum		int
+	finishedReduceNum	int
 }
+
+const (
+	MASTER_INIT = iota
+	MAP_FINISHED
+	REDUCE_FINISHED
+)
+
+const (
+	TASK_INIT = iota
+	TASK_PROCESSING
+	TASK_DONE
+)
 
 type Task struct {
-	State          int // TASK_INIT;TASK_PROCESSING;TASK_DONE
-	InputFileName  string
-	Id             int
-	OutputFileName string
-	TaskType       int // MAP_TASK;REDUCE_TASK
-	NReduce        int
-	NMap           int
-	StartTime      int64
+	State     	int // TASK_INIT;TASK_PROCESSING;TASK_DONE
+	FileName  	string
+	Index      	int
+	StartTime   int64
 }
 
+type ResponseMsg struct {
+	NReduce 	int
+	JobType		int
+	Job			Task
+}
+
+
+type RequestMsg struct {
+	JobType		int
+	TaskIndex	int
+}
+
+const (
+	MapJob = iota + 1
+	ReduceJob
+	WaitJob
+	CompleteJob
+)
 
 // Your code here -- RPC handlers for the worker to call.
 
@@ -47,57 +72,86 @@ func (m *Master) Example(args *ExampleArgs, reply *ExampleReply) error {
 	return nil
 }
 
-func (m *Master) AskTask(_ *struct{}, replyTask *Task) error {
-	if m.state == 0 {
-		if len(m.mapTasks) == 0 {
-			replyTask.State = 1
-			return nil
+// 在任务队列找一个未处理的任务，如果任务超时了状态会重新变为未处理
+func (m *Master) findMapTask() *Task {
+	for _, task := range m.mapTasks {
+		if task.State == TASK_INIT {
+			task.State = TASK_PROCESSING
+			return &task
 		}
-		mapTask := m.mapTasks[0]
-		m.mapTasks = m.mapTasks[1:]
-		replyTask.InputFileName = mapTask.InputFileName
-		replyTask.Id = mapTask.Id
-		replyTask.NReduce = mapTask.NReduce
-		replyTask.TaskType = mapTask.TaskType
-		replyTask.NMap = mapTask.NMap
-	} else {
-		if len(m.reduceTasks) == 0 {
-			replyTask.State = 1
-			return nil
+	}
+	return nil
+}
+
+func (m *Master) findReduceTask() *Task {
+	for _, task := range m.reduceTasks {
+		if task.State == TASK_INIT {
+			task.State = TASK_PROCESSING
+			return &task
 		}
-		reduceTask := m.reduceTasks[0]
-		m.reduceTasks = m.reduceTasks[1:]
-		replyTask.InputFileName = reduceTask.InputFileName
-		replyTask.Id = reduceTask.Id
-		replyTask.NReduce = reduceTask.NReduce
-		replyTask.TaskType = reduceTask.TaskType
-		replyTask.NMap = reduceTask.NMap
+	}
+	return nil
+}
+
+
+func (m *Master) HeartBreak(_ *struct{}, responseMsg *ResponseMsg) error {
+	responseMsg.NReduce = m.nReduce
+	switch m.state {
+	case MASTER_INIT:
+		responseMsg.JobType = MapJob
+		task := m.findMapTask()
+		// 所有map任务状态变为2之后, m.sate 才会变为1,如果此处找不到未分配的map任务就说明有map任务再处理中
+		if task == nil {
+			responseMsg.JobType = WaitJob
+		} else {
+			responseMsg.Job.Index = task.Index
+			responseMsg.Job.FileName = task.FileName
+		}
+	case MAP_FINISHED:
+		responseMsg.JobType = ReduceJob
+		task := m.findReduceTask()
+		if task == nil {
+			responseMsg.JobType = WaitJob
+		} else {
+			responseMsg.Job.Index = task.Index
+			responseMsg.Job.FileName = task.FileName
+		}
+	case REDUCE_FINISHED:
+		responseMsg.JobType = CompleteJob
 	}
 	return nil
 }
 
 
 
-func (m *Master) TaskFinish(requestTask *Task, _ *struct{}) error {
+func (m *Master) Report(requestMsg *RequestMsg, _ *struct{}) error {
 	// we assumption master will not crash, complete task
-	if requestTask.TaskType == 1 {
-		m.mapTaskFinishNum++
-		var task Task
-		task.TaskType = 2
-		task.InputFileName = requestTask.OutputFileName
-		task.Id = requestTask.Id
-		task.NReduce = requestTask.NReduce
-		m.reduceTasks = append(m.reduceTasks, task)
-		if m.mapTaskFinishNum == m.nMap {
-			fmt.Println("map phrase finish")
-			m.state = 1
+	switch requestMsg.JobType {
+	case MapJob:
+		if m.mapTasks[requestMsg.TaskIndex].State == TASK_PROCESSING {
+			m.mapTasks[requestMsg.TaskIndex].State = TASK_DONE
+			m.finishedMapNum++
 		}
-	} else {
-		m.reduceTaskFinishNum++
-		if m.reduceTaskFinishNum == m.nReduce {
-			fmt.Println("reduce phrase finish")
-			m.state = 2
+		if m.finishedMapNum == m.nMap {
+			m.state = MAP_FINISHED
 		}
+	case ReduceJob:
+		if m.reduceTasks[requestMsg.TaskIndex].State == TASK_PROCESSING {
+			m.reduceTasks[requestMsg.TaskIndex].State = TASK_DONE
+			m.finishedReduceNum++
+			if m.finishedMapNum == m.nReduce {
+				m.state = MAP_FINISHED
+			}
+			m.state = REDUCE_FINISHED
+		}
+	default:
+		if m.finishedMapNum == m.nMap {
+			m.state = MAP_FINISHED
+		}
+		if m.finishedMapNum == m.nReduce {
+			m.state = MAP_FINISHED
+		}
+
 	}
 	return nil
 }
@@ -152,14 +206,9 @@ func MakeMaster(files []string, nReduce int) *Master {
 	var task Task
 	for i:=0; i< length; i++ {
 		task.InputFileName = files[i]
-		task.TaskType = 1
-		task.Id = i
-		task.NMap = 8
-		task.NReduce = nReduce
+		task.Index = i
 		m.mapTasks = append(m.mapTasks, task)
 	}
-	m.nReduce = 8
-	m.nMap = 8
 	m.server()
 	return &m
 }

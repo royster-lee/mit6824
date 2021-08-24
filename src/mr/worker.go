@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"time"
 )
 import "log"
 import "net/rpc"
@@ -48,30 +49,23 @@ func Worker(mapf func(string, string) []KeyValue,
 	// CallExample()
 
 	// initial worker struct
-	var task Task
+	var response ResponseMsg
 	// every worker generate a workId
 
 	// get a map task, in this case just get filename
 	for {
-		askTask(struct{}{}, &task)
-		fmt.Printf("task = %v \n", task)
+		doHeartBreak(&response)
 
-		if task.TaskType == 1 {
-			if task.State == 1 {
-				break
-			}
-			fmt.Println(" worker do map task : ", task.Id)
-			task.OutputFileName = doMapTask(task, mapf)
-		} else {
-			if task.State == 1 {
-				fmt.Println("worker return")
-				return
-			}
-			fmt.Println(" worker do reduce task : ", task.Id)
-			doReduceTask(task, reducef)
-
+		switch response.JobType {
+		case MapJob:
+			doMapTask(response.Job, mapf)
+		case ReduceJob:
+			doReduceTask(response.Job, reducef)
+		case WaitJob:
+			time.Sleep(1 * time.Second)
+		case CompleteJob:
+			fmt.Println("worker return")
 		}
-		finishTask(&task, struct{}{})
 	}
 }
 
@@ -114,45 +108,28 @@ func doReduceTask(task Task, reducef func(string, []string) string)  {
 
 }
 
-
-
 func doMapTask(task Task, mapf func(string, string) []KeyValue) string{
 	shuffleName := "shuffle-" + task.InputFileName
 	var intermediate []KeyValue
-	file, err := os.Open("../main/" + task.InputFileName)
-	if err != nil {
-		log.Printf("cannot open %v", task.InputFileName)
-	}
-	content, err := ioutil.ReadAll(file)
-	if err != nil {
-		log.Printf("cannot open %v", task.InputFileName)
-	}
-	err = file.Close()
-	if err != nil {
-		log.Printf("cannot close %v", task.InputFileName)
-	}
+	file, _ := os.Open("../main/" + task.InputFileName)
+	content, _ := ioutil.ReadAll(file)
+	file.Close()
 	kva := mapf(task.InputFileName, string(content))
 	intermediate = append(intermediate, kva...)
-	shuffleFile, err := os.Create(shuffleName)
-	if err != nil {
-		log.Printf("cannot create %v", shuffleName)
-	}
+	// 遍历kva, 生成shuffle文件保存到 reduceFiles, map任务结束时，应该遍历reduceFiles来生成reduceTasks
+
+	shuffleFile, _ := os.Create(shuffleName)
 	enc := json.NewEncoder(shuffleFile)
-	err = enc.Encode(&intermediate)
-	if err != nil {
-		log.Printf("cannot encode %v", shuffleName)
-	}
+	enc.Encode(&intermediate)
 	return shuffleName
 }
 
 
-func askTask(args struct{}, replyTask *Task) {
-	call("Master.AskTask", &args, replyTask)
+func doHeartBreak(responseMsg *ResponseMsg) {
+	call("Master.HeartBreak", &struct{}{}, responseMsg)
 }
-
-
-func finishTask(requestTask *Task, reply struct{}) {
-	call("Master.TaskFinish", requestTask, &reply)
+func doReport(requestMsg *RequestMsg) {
+	call("Master.HeartBreak", requestMsg, &struct{}{})
 }
 
 
