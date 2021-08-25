@@ -216,6 +216,8 @@ func MakeMaster(files []string, nReduce int) *Master {
 		task.Index = i
 		m.mapTasks = append(m.mapTasks, task)
 	}
+	m.nMap = 8
+	m.nReduce = nReduce
 	m.server()
 	return &m
 }

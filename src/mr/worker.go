@@ -45,11 +45,12 @@ func Worker(mapf func(string, string) []KeyValue,
 	// CallExample()
 
 	// initial worker struct
-	var response ResponseMsg
+
 	// every worker generate a workId
 
 	// get a map task, in this case just get filename
 	for {
+		var response ResponseMsg
 		doHeartBreak(&response)
 		switch response.JobType {
 		case MapJob:
@@ -113,7 +114,7 @@ func doMapTask(task Task, mapf func(string, string) []KeyValue) {
 	var requestMsg RequestMsg
 	requestMsg.JobType = MapJob
 	requestMsg.TaskIndex = task.Index
-	requestMsg.ReduceFiles = []string{"shuffle" + strconv.Itoa(task.Index)}
+	requestMsg.ReduceFiles = []string{"shuffle-" + strconv.Itoa(task.Index)}
 	doReport(&requestMsg)
 }
 
