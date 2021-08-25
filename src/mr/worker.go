@@ -1,14 +1,10 @@
 package mr
 
 import (
-	"encoding/json"
 	"fmt"
 	"hash/fnv"
-	"io/ioutil"
 	"log"
 	"net/rpc"
-	"os"
-	"sort"
 	"strconv"
 	"time"
 )
@@ -21,12 +17,6 @@ type KeyValue struct {
 	Value string
 }
 
-const (
-	MapJob = iota
-	ReduceJob
-	WaitJob
-	CompleteJob
-)
 
 type ByKey []KeyValue
 
@@ -61,7 +51,6 @@ func Worker(mapf func(string, string) []KeyValue,
 	// get a map task, in this case just get filename
 	for {
 		doHeartBreak(&response)
-
 		switch response.JobType {
 		case MapJob:
 			doMapTask(response.Job, mapf)
@@ -76,65 +65,63 @@ func Worker(mapf func(string, string) []KeyValue,
 }
 
 func doReduceTask(task Task, reducef func(string, []string) string) {
-	fp, err := os.Open("../main/" + task.InputFileName)
-	if err != nil {
-		log.Printf("cannot open %v", task.InputFileName)
-	}
-	dec := json.NewDecoder(fp)
-	var intermediate []KeyValue
-	err = dec.Decode(&intermediate)
-	if err != nil {
-		log.Printf("cannot decode %v", task.InputFileName)
-	}
-	sort.Sort(ByKey(intermediate))
-	i := 0
-	oname := "mr-out-"
-
-	for i < len(intermediate) {
-		suffix := ihash(intermediate[i].Key) % task.NReduce
-		ofile, _ := os.OpenFile(oname+strconv.Itoa(suffix), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
-		j := i + 1
-		for j < len(intermediate) && intermediate[j].Key == intermediate[i].Key {
-			j++
-		}
-		values := []string{}
-		for k := i; k < j; k++ {
-			values = append(values, intermediate[k].Value)
-		}
-		output := reducef(intermediate[i].Key, values)
-
-		// this is the correct format for each line of Reduce output.
-		_, err := fmt.Fprintf(ofile, "%v %v\n", intermediate[i].Key, output)
-		if err != nil {
-			log.Fatalf("error = %v \n", err)
-		}
-
-		i = j
-	}
-
+	filename := task.FileName
+	fmt.Println("worker do reduce task : ", filename)
+	//fp, _ := os.Open("../main/" + filename)
+	//dec := json.NewDecoder(fp)
+	//var intermediate []KeyValue
+	//dec.Decode(&intermediate)
+	//sort.Sort(ByKey(intermediate))
+	//oname := "mr-out-" + strconv.Itoa(task.Index)
+	//ofile, _ := os.Open(oname)
+	//i := 0
+	//for i < len(intermediate) {
+	//	j := i + 1
+	//	for j < len(intermediate) && intermediate[j].Key == intermediate[i].Key {
+	//		j++
+	//	}
+	//	values := []string{}
+	//	for k := i; k < j; k++ {
+	//		values = append(values, intermediate[k].Value)
+	//	}
+	//	output := reducef(intermediate[i].Key, values)
+	//
+	//	// this is the correct format for each line of Reduce output.
+	//	_, err := fmt.Fprintf(ofile, "%v %v\n", intermediate[i].Key, output)
+	//	if err != nil {
+	//		log.Fatalf("error = %v \n", err)
+	//	}
+	//
+	//	i = j
+	//}
+	var requestMsg RequestMsg
+	requestMsg.JobType = ReduceJob
+	requestMsg.TaskIndex = task.Index
+	doReport(&requestMsg)
 }
 
-func doMapTask(task Task, mapf func(string, string) []KeyValue) string {
-	shuffleName := "shuffle-" + task.InputFileName
-	var intermediate []KeyValue
-	file, _ := os.Open("../main/" + task.InputFileName)
-	content, _ := ioutil.ReadAll(file)
-	file.Close()
-	kva := mapf(task.InputFileName, string(content))
-	intermediate = append(intermediate, kva...)
+func doMapTask(task Task, mapf func(string, string) []KeyValue) {
+	filename := task.FileName
+	println("worker do map task : ", filename)
+	//var intermediate []KeyValue
+	//file, _ := os.Open("../main/" + filename)
+	//content, _ := ioutil.ReadAll(file)
+	//file.Close()
+	//kva := mapf(filename, string(content))
+	//intermediate = append(intermediate, kva...)
 	// 遍历kva, 生成shuffle文件保存到 reduceFiles, map任务结束时，应该遍历reduceFiles来生成reduceTasks
-
-	shuffleFile, _ := os.Create(shuffleName)
-	enc := json.NewEncoder(shuffleFile)
-	enc.Encode(&intermediate)
-	return shuffleName
+	var requestMsg RequestMsg
+	requestMsg.JobType = MapJob
+	requestMsg.TaskIndex = task.Index
+	requestMsg.ReduceFiles = []string{"shuffle" + strconv.Itoa(task.Index)}
+	doReport(&requestMsg)
 }
 
 func doHeartBreak(responseMsg *ResponseMsg) {
 	call("Master.HeartBreak", &struct{}{}, responseMsg)
 }
 func doReport(requestMsg *RequestMsg) {
-	call("Master.HeartBreak", requestMsg, &struct{}{})
+	call("Master.Report", requestMsg, &struct{}{})
 }
 
 //

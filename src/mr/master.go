@@ -49,17 +49,10 @@ type ResponseMsg struct {
 type HeartbeatResponse struct {
 	JobType int
 }
-type HeartbeatRequest struct {
-
-}
-type ReportRequest struct {
-
-}
-type ReportResponse struct {
-
 type RequestMsg struct {
 	JobType		int
 	TaskIndex	int
+	ReduceFiles	[]string
 }
 
 const (
@@ -70,13 +63,6 @@ const (
 )
 
 // Your code here -- RPC handlers for the worker to call.
-
-func (c *Coordinator) Heartbeat(request *HeartbeatRequest, response *HeartbeatResponse) error {
-	msg := heartbeatMsg{response, make(chan struct{})}
-	c.heartbeatCh <- msg
-	<-msg.ok
-	return nil
-}
 
 // 在任务队列找一个未处理的任务，如果任务超时了状态会重新变为未处理
 func (m *Master) findMapTask() *Task {
@@ -106,7 +92,7 @@ func (m *Master) HeartBreak(_ *struct{}, responseMsg *ResponseMsg) error {
 	case MASTER_INIT:
 		responseMsg.JobType = MapJob
 		task := m.findMapTask()
-		// 所有map任务状态变为2之后, m.sate 才会变为1,如果此处找不到未分配的map任务就说明有map任务再处理中
+		// 所有map任务状态变为2之后, m.sate 才会变为1,如果此处找不到未分配的map任务就说明有map任务在处理中
 		if task == nil {
 			responseMsg.JobType = WaitJob
 		} else {
@@ -128,25 +114,30 @@ func (m *Master) HeartBreak(_ *struct{}, responseMsg *ResponseMsg) error {
 	return nil
 }
 
-func (c *Coordinator) schedule() {
-	c.initMapPhase()
-	for {
-		select {
-		case msg := <-c.heartbeatCh:
-			switch c.phase {
-			case MapPhase:
-
 
 func (m *Master) Report(requestMsg *RequestMsg, _ *struct{}) error {
 	// we assumption master will not crash, complete task
+	fmt.Printf("report a job JobType =%d, index =%d ,ReduceFiles = %v \n", requestMsg.JobType, requestMsg.TaskIndex, requestMsg.ReduceFiles)
 	switch requestMsg.JobType {
 	case MapJob:
 		if m.mapTasks[requestMsg.TaskIndex].State == TASK_PROCESSING {
 			m.mapTasks[requestMsg.TaskIndex].State = TASK_DONE
 			m.finishedMapNum++
+			for _, reduceFile := range requestMsg.ReduceFiles {
+				m.reduceFiles[reduceFile] = true
+			}
 		}
 		if m.finishedMapNum == m.nMap {
 			m.state = MAP_FINISHED
+			var task Task
+			i := 0
+			// 分配 reduce 任务
+			for k, _ := range m.reduceFiles {
+				task.FileName = k
+				task.Index = i
+				m.reduceTasks = append(m.reduceTasks, task)
+				i++
+			}
 		}
 	case ReduceJob:
 		if m.reduceTasks[requestMsg.TaskIndex].State == TASK_PROCESSING {
@@ -166,20 +157,17 @@ func (m *Master) Report(requestMsg *RequestMsg, _ *struct{}) error {
 		}
 
 	}
+	return nil
 }
 
-func (c *Coordinator) giveTask() Task{
-	var task Task
-	return task
-}
 
 
 
 //
 // start a thread that listens for RPCs from worker.go
 //
-func (c *Coordinator) server() {
-	err := rpc.Register(c)
+func (m *Master) server() {
+	err := rpc.Register(m)
 	if err != nil {
 		return 
 	}
@@ -200,14 +188,13 @@ func (c *Coordinator) server() {
 		if err != nil {
 		}
 	}()
-	go c.schedule()
 }
 
 //
 // main/mrmaster.go calls Done() periodically to find out
 // if the entire job has finished.
 //
-func (c *Coordinator) Done() bool {
+func (m *Master) Done() bool {
 	ret := false
 
 	// Your code here.
@@ -219,13 +206,13 @@ func (c *Coordinator) Done() bool {
 // main/mrmaster.go calls this function.
 // nReduce is the number of reduce tasks to use.
 //
-func MakeMaster(files []string, nReduce int) *Coordinator {
-	c := Coordinator{}
+func MakeMaster(files []string, nReduce int) *Master {
+	m := Master{}
 	// Your code here.
 	length := len(files)
 	var task Task
 	for i:=0; i< length; i++ {
-		task.InputFileName = files[i]
+		task.FileName = files[i]
 		task.Index = i
 		m.mapTasks = append(m.mapTasks, task)
 	}
