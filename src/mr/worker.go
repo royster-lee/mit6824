@@ -80,7 +80,7 @@ func doReduceTask(task Task, reducef func(string, []string) string) {
 	dec.Decode(&intermediate)
 	sort.Sort(ByKey(intermediate))
 	oname := "mr-out-" + strconv.Itoa(task.Index)
-	ofile, _ := os.Open(oname)
+	ofile, _ := os.Create(oname)
 	i := 0
 	for i < len(intermediate) {
 		j := i + 1
@@ -99,6 +99,7 @@ func doReduceTask(task Task, reducef func(string, []string) string) {
 		}
 		i = j
 	}
+	ofile.Close()
 	var requestMsg RequestMsg
 	requestMsg.JobType = ReduceJob
 	requestMsg.TaskIndex = task.Index
