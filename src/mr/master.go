@@ -117,7 +117,7 @@ func (m *Master) HeartBreak(_ *struct{}, responseMsg *ResponseMsg) error {
 
 func (m *Master) Report(requestMsg *RequestMsg, _ *struct{}) error {
 	// we assumption master will not crash, complete task
-	fmt.Printf("report a job JobType =%d, index =%d ,ReduceFiles = %v state = %d\n", requestMsg.JobType, requestMsg.TaskIndex, requestMsg.ReduceFiles,m.mapTasks[requestMsg.TaskIndex].State)
+	fmt.Printf("report a job JobType =%d, index =%d ,ReduceFiles = %v\n", requestMsg.JobType, requestMsg.TaskIndex, requestMsg.ReduceFiles)
 	switch requestMsg.JobType {
 	case MapJob:
 		if m.mapTasks[requestMsg.TaskIndex].State == TASK_PROCESSING {
@@ -138,7 +138,7 @@ func (m *Master) Report(requestMsg *RequestMsg, _ *struct{}) error {
 				m.reduceTasks = append(m.reduceTasks, &task)
 				i++
 			}
-			fmt.Printf("reduceTasks = %v \n", m.reduceTasks)
+			fmt.Printf("reduceTasks = %v \n", m.reduceFiles)
 		}
 	case ReduceJob:
 		if m.reduceTasks[requestMsg.TaskIndex].State == TASK_PROCESSING {

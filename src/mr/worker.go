@@ -1,10 +1,14 @@
 package mr
 
 import (
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"io/ioutil"
 	"log"
 	"net/rpc"
+	"os"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -107,18 +111,40 @@ func doReduceTask(task Task, reducef func(string, []string) string) {
 func doMapTask(task Task, mapf func(string, string) []KeyValue) {
 	filename := task.FileName
 	println("worker do map task : ", filename)
-	//var intermediate []KeyValue
-	//file, _ := os.Open("../main/" + filename)
-	//content, _ := ioutil.ReadAll(file)
-	//file.Close()
-	//kva := mapf(filename, string(content))
-	//intermediate = append(intermediate, kva...)
+	var intermediate []KeyValue
+	file, _ := os.Open("../main/" + filename)
+	content, _ := ioutil.ReadAll(file)
+	file.Close()
+	kva := mapf(filename, string(content))
+	intermediate = append(intermediate, kva...)
+	sort.Sort(ByKey(intermediate))
+	i := 0
 	// 遍历kva, 生成shuffle文件保存到 reduceFiles, map任务结束时，应该遍历reduceFiles来生成reduceTasks
-	time.Sleep(1 * time.Second)
+	basicName := "shuffle-"
+	shuffleMap := make(map[string]ByKey)
+	for i < len(intermediate) {
+		suffix := strconv.Itoa(ihash(intermediate[i].Key) % 10)
+		oname := basicName + suffix
+
+		shuffleMap[oname] = append(shuffleMap[oname], intermediate[i])
+		j := i + 1
+		for j < len(intermediate) && intermediate[j].Key == intermediate[i].Key {
+			shuffleMap[oname] = append(shuffleMap[oname], intermediate[j])
+			j++
+		}
+		i = j
+	}
 	var requestMsg RequestMsg
+	for k, v := range shuffleMap {
+		ofile, _ := os.Open(k)
+		enc := json.NewEncoder(ofile)
+		enc.Encode(&v)
+		ofile.Close()
+		requestMsg.ReduceFiles = append(requestMsg.ReduceFiles, k)
+	}
+
 	requestMsg.JobType = MapJob
 	requestMsg.TaskIndex = task.Index
-	requestMsg.ReduceFiles = []string{"shuffle-" + strconv.Itoa(task.Index)}
 	doReport(&requestMsg)
 }
 
