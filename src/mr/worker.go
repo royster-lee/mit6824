@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/rpc"
 	"os"
-	"sort"
 	"strconv"
 	"time"
 )
@@ -117,7 +116,6 @@ func doMapTask(task Task, mapf func(string, string) []KeyValue) {
 	file.Close()
 	kva := mapf(filename, string(content))
 	intermediate = append(intermediate, kva...)
-	sort.Sort(ByKey(intermediate))
 	i := 0
 	// 遍历kva, 生成shuffle文件保存到 reduceFiles, map任务结束时，应该遍历reduceFiles来生成reduceTasks
 	basicName := "shuffle-"
@@ -125,18 +123,12 @@ func doMapTask(task Task, mapf func(string, string) []KeyValue) {
 	for i < len(intermediate) {
 		suffix := strconv.Itoa(ihash(intermediate[i].Key) % 10)
 		oname := basicName + suffix
-
 		shuffleMap[oname] = append(shuffleMap[oname], intermediate[i])
-		j := i + 1
-		for j < len(intermediate) && intermediate[j].Key == intermediate[i].Key {
-			shuffleMap[oname] = append(shuffleMap[oname], intermediate[j])
-			j++
-		}
-		i = j
+		i ++
 	}
 	var requestMsg RequestMsg
 	for k, v := range shuffleMap {
-		ofile, _ := os.Open(k)
+		ofile, _ := os.OpenFile(k, os.O_WRONLY | os.O_APPEND | os.O_CREATE,0666)
 		enc := json.NewEncoder(ofile)
 		enc.Encode(&v)
 		ofile.Close()
