@@ -129,10 +129,10 @@ func (m *Master) Report(requestMsg *RequestMsg, _ *struct{}) error {
 		}
 		if m.finishedMapNum == m.nMap {
 			m.state = MAP_FINISHED
-			var task Task
 			i := 0
 			// 分配 reduce 任务
 			for k, _ := range m.reduceFiles {
+				var task Task
 				task.FileName = k
 				task.Index = i
 				m.reduceTasks = append(m.reduceTasks, &task)
@@ -210,8 +210,9 @@ func MakeMaster(files []string, nReduce int) *Master {
 	m := Master{}
 	// Your code here.
 	length := len(files)
-	var task Task
+
 	for i:=0; i< length; i++ {
+		var task Task
 		task.FileName = files[i]
 		task.Index = i
 		m.mapTasks = append(m.mapTasks, &task)
