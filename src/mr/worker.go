@@ -68,6 +68,7 @@ func Worker(mapf func(string, string) []KeyValue,
 func doReduceTask(task Task, reducef func(string, []string) string) {
 	filename := task.FileName
 	fmt.Println("worker do reduce task : ", filename)
+	time.Sleep(1 * time.Second)
 	//fp, _ := os.Open("../main/" + filename)
 	//dec := json.NewDecoder(fp)
 	//var intermediate []KeyValue
@@ -111,6 +112,7 @@ func doMapTask(task Task, mapf func(string, string) []KeyValue) {
 	//kva := mapf(filename, string(content))
 	//intermediate = append(intermediate, kva...)
 	// 遍历kva, 生成shuffle文件保存到 reduceFiles, map任务结束时，应该遍历reduceFiles来生成reduceTasks
+	time.Sleep(1 * time.Second)
 	var requestMsg RequestMsg
 	requestMsg.JobType = MapJob
 	requestMsg.TaskIndex = task.Index

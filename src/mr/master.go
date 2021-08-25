@@ -14,8 +14,8 @@ type Master struct {
 	// Your definitions here.
 	nReduce             int
 	nMap                int
-	mapTasks            []Task
-	reduceTasks         []Task
+	mapTasks            []*Task
+	reduceTasks         []*Task
 	state               int // MASTER_INIT;MAP_FINISHED;REDUCE_FINISHED
 	reduceFiles			map[string]bool
 	finishedMapNum		int
@@ -69,7 +69,7 @@ func (m *Master) findMapTask() *Task {
 	for _, task := range m.mapTasks {
 		if task.State == TASK_INIT {
 			task.State = TASK_PROCESSING
-			return &task
+			return task
 		}
 	}
 	return nil
@@ -79,7 +79,7 @@ func (m *Master) findReduceTask() *Task {
 	for _, task := range m.reduceTasks {
 		if task.State == TASK_INIT {
 			task.State = TASK_PROCESSING
-			return &task
+			return task
 		}
 	}
 	return nil
@@ -117,7 +117,7 @@ func (m *Master) HeartBreak(_ *struct{}, responseMsg *ResponseMsg) error {
 
 func (m *Master) Report(requestMsg *RequestMsg, _ *struct{}) error {
 	// we assumption master will not crash, complete task
-	fmt.Printf("report a job JobType =%d, index =%d ,ReduceFiles = %v \n", requestMsg.JobType, requestMsg.TaskIndex, requestMsg.ReduceFiles)
+	fmt.Printf("report a job JobType =%d, index =%d ,ReduceFiles = %v state = %d\n", requestMsg.JobType, requestMsg.TaskIndex, requestMsg.ReduceFiles,m.mapTasks[requestMsg.TaskIndex].State)
 	switch requestMsg.JobType {
 	case MapJob:
 		if m.mapTasks[requestMsg.TaskIndex].State == TASK_PROCESSING {
@@ -135,7 +135,7 @@ func (m *Master) Report(requestMsg *RequestMsg, _ *struct{}) error {
 			for k, _ := range m.reduceFiles {
 				task.FileName = k
 				task.Index = i
-				m.reduceTasks = append(m.reduceTasks, task)
+				m.reduceTasks = append(m.reduceTasks, &task)
 				i++
 			}
 		}
@@ -214,7 +214,7 @@ func MakeMaster(files []string, nReduce int) *Master {
 	for i:=0; i< length; i++ {
 		task.FileName = files[i]
 		task.Index = i
-		m.mapTasks = append(m.mapTasks, task)
+		m.mapTasks = append(m.mapTasks, &task)
 	}
 	m.nMap = 8
 	m.nReduce = nReduce
