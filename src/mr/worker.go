@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/rpc"
 	"os"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -73,34 +74,31 @@ func Worker(mapf func(string, string) []KeyValue,
 func doReduceTask(task Task, reducef func(string, []string) string) {
 	filename := task.FileName
 	fmt.Println("worker do reduce task : ", filename)
-	time.Sleep(1 * time.Second)
-	//fp, _ := os.Open("../main/" + filename)
-	//dec := json.NewDecoder(fp)
-	//var intermediate []KeyValue
-	//dec.Decode(&intermediate)
-	//sort.Sort(ByKey(intermediate))
-	//oname := "mr-out-" + strconv.Itoa(task.Index)
-	//ofile, _ := os.Open(oname)
-	//i := 0
-	//for i < len(intermediate) {
-	//	j := i + 1
-	//	for j < len(intermediate) && intermediate[j].Key == intermediate[i].Key {
-	//		j++
-	//	}
-	//	values := []string{}
-	//	for k := i; k < j; k++ {
-	//		values = append(values, intermediate[k].Value)
-	//	}
-	//	output := reducef(intermediate[i].Key, values)
-	//
-	//	// this is the correct format for each line of Reduce output.
-	//	_, err := fmt.Fprintf(ofile, "%v %v\n", intermediate[i].Key, output)
-	//	if err != nil {
-	//		log.Fatalf("error = %v \n", err)
-	//	}
-	//
-	//	i = j
-	//}
+	fp, _ := os.Open("../main/" + filename)
+	dec := json.NewDecoder(fp)
+	var intermediate []KeyValue
+	dec.Decode(&intermediate)
+	sort.Sort(ByKey(intermediate))
+	oname := "mr-out-" + strconv.Itoa(task.Index)
+	ofile, _ := os.Open(oname)
+	i := 0
+	for i < len(intermediate) {
+		j := i + 1
+		for j < len(intermediate) && intermediate[j].Key == intermediate[i].Key {
+			j++
+		}
+		values := []string{}
+		for k := i; k < j; k++ {
+			values = append(values, intermediate[k].Value)
+		}
+		output := reducef(intermediate[i].Key, values)
+		// this is the correct format for each line of Reduce output.
+		_, err := fmt.Fprintf(ofile, "%v %v\n", intermediate[i].Key, output)
+		if err != nil {
+			log.Fatalf("error = %v \n", err)
+		}
+		i = j
+	}
 	var requestMsg RequestMsg
 	requestMsg.JobType = ReduceJob
 	requestMsg.TaskIndex = task.Index
