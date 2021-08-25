@@ -218,6 +218,7 @@ func MakeMaster(files []string, nReduce int) *Master {
 	}
 	m.nMap = 8
 	m.nReduce = nReduce
+	m.reduceFiles = make(map[string]bool)
 	m.server()
 	return &m
 }
