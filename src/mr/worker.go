@@ -92,11 +92,9 @@ func doReduceTask(task Task, reducef func(string, []string) string) {
 			values = append(values, intermediate[k].Value)
 		}
 		output := reducef(intermediate[i].Key, values)
+
 		// this is the correct format for each line of Reduce output.
-		_, err := fmt.Fprintf(ofile, "%v %v\n", intermediate[i].Key, output)
-		if err != nil {
-			log.Fatalf("error = %v \n", err)
-		}
+		fmt.Fprintf(ofile, "%v %v\n", intermediate[i].Key, output)
 		i = j
 	}
 	ofile.Close()
@@ -127,7 +125,13 @@ func doMapTask(task Task, mapf func(string, string) []KeyValue) {
 	}
 	var requestMsg RequestMsg
 	for k, v := range shuffleMap {
-		ofile, _ := os.OpenFile(k, os.O_WRONLY | os.O_APPEND | os.O_CREATE,0666)
+		ofile, _ := os.OpenFile(k, os.O_WRONLY | os.O_CREATE,0666)
+		// 已经存在的文件内容拼接后重新写入
+		dec := json.NewDecoder(ofile)
+		var tmp []KeyValue
+		dec.Decode(&tmp)
+		v = append(v, tmp...)
+
 		enc := json.NewEncoder(ofile)
 		enc.Encode(&v)
 		ofile.Close()
