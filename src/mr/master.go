@@ -138,15 +138,15 @@ func (m *Master) Report(requestMsg *RequestMsg, _ *struct{}) error {
 				m.reduceTasks = append(m.reduceTasks, &task)
 				i++
 			}
+			fmt.Printf("reduceTasks = %v \n", m.reduceTasks)
 		}
 	case ReduceJob:
 		if m.reduceTasks[requestMsg.TaskIndex].State == TASK_PROCESSING {
 			m.reduceTasks[requestMsg.TaskIndex].State = TASK_DONE
 			m.finishedReduceNum++
-			if m.finishedMapNum == m.nReduce {
-				m.state = MAP_FINISHED
+			if m.finishedReduceNum == m.nReduce {
+				m.state = REDUCE_FINISHED
 			}
-			m.state = REDUCE_FINISHED
 		}
 	default:
 		if m.finishedMapNum == m.nMap {
