@@ -202,7 +202,7 @@ func (m *Master) Report(requestMsg *RequestMsg, _ *struct{}) error {
 func (m *Master) server() {
 	err := rpc.Register(m)
 	if err != nil {
-		return 
+		fmt.Println("err :", err)
 	}
 	rpc.HandleHTTP()
 	//l, e := net.Listen("tcp", ":1234")
@@ -210,7 +210,7 @@ func (m *Master) server() {
 	fmt.Println("sockname =", sockname)
 	err = os.Remove(sockname)
 	if err != nil {
-		return
+		fmt.Println("err :", err)
 	}
 	l, e := net.Listen("unix", sockname)
 	if e != nil {
