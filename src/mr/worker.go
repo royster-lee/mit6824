@@ -62,7 +62,7 @@ func Worker(mapf func(string, string) []KeyValue,
 		case ReduceJob:
 			doReduceTask(response.Job, reducef)
 		case WaitJob:
-			fmt.Println("do wait job")
+			//fmt.Println("do wait job")
 			time.Sleep(1 * time.Second)
 		case CompleteJob:
 			fmt.Println("worker return")
