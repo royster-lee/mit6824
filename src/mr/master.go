@@ -205,15 +205,14 @@ func (m *Master) server() {
 		return 
 	}
 	rpc.HandleHTTP()
-	l, e := net.Listen("tcp", ":1234")
-	//sockname := masterSock()
-	//fmt.Println("sockname =", sockname)
-	fmt.Println("listening =", 1234)
-	//err = os.Remove(sockname)
-	//if err != nil {
-	//	return
-	//}
-	//l, e := net.Listen("unix", sockname)
+	//l, e := net.Listen("tcp", ":1234")
+	sockname := masterSock()
+	fmt.Println("sockname =", sockname)
+	err = os.Remove(sockname)
+	if err != nil {
+		return
+	}
+	l, e := net.Listen("unix", sockname)
 	if e != nil {
 		log.Fatal("listen error:", e)
 	}
