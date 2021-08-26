@@ -113,37 +113,13 @@ func doMapTask(task Task, mapf func(string, string) []KeyValue) {
 	file.Close()
 	kva := mapf(filename, string(content))
 	intermediate = append(intermediate, kva...)
-	i := 0
 	// 遍历kva, 生成shuffle文件保存到 reduceFiles, map任务结束时，应该遍历reduceFiles来生成reduceTasks
-	basicName := "shuffle-"
-	shuffleMap := make(map[string]ByKey)
-	for i < len(intermediate) {
-		suffix := strconv.Itoa(ihash(intermediate[i].Key) % 10)
-		oname := basicName + suffix
-		shuffleMap[oname] = append(shuffleMap[oname], intermediate[i])
-		i++
-	}
+	mappingName := "mapping-" + strconv.Itoa(task.Index)
 	var requestMsg RequestMsg
-	for k, v := range shuffleMap {
-		ofile, err := os.Open(k)
-		if err != nil {
-			ofile, err = os.Create(k)
-		}
-		// 已经存在的文件内容拼接后重新
-		dec := json.NewDecoder(ofile)
-		var kva []KeyValue
-		dec.Decode(&kva)
-		v = append(v, kva...)
-
-		ofile.Close()
-		ofile, _ = os.OpenFile(k, os.O_WRONLY|os.O_CREATE, 0666)
-		enc := json.NewEncoder(ofile)
-		enc.Encode(&v)
-		ofile.Close()
-
-		requestMsg.ReduceFiles = append(requestMsg.ReduceFiles, k)
-	}
-
+	ofile, _ := os.Create(mappingName)
+	enc := json.NewEncoder(ofile)
+	enc.Encode(&intermediate)
+	requestMsg.Maping = mappingName
 	requestMsg.JobType = MapJob
 	requestMsg.TaskIndex = task.Index
 	doReport(&requestMsg)
