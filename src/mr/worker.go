@@ -125,9 +125,9 @@ func doMapTask(task Task, mapf func(string, string) []KeyValue) {
 	}
 	var requestMsg RequestMsg
 	for k, v := range shuffleMap {
-		ofile, err := os.Open(filename)
+		ofile, err := os.Open(k)
 		if err != nil {
-			ofile, err = os.Create(filename)
+			ofile, err = os.Create(k)
 		}
 		// 已经存在的文件内容拼接后重新
 		dec := json.NewDecoder(ofile)
@@ -136,7 +136,7 @@ func doMapTask(task Task, mapf func(string, string) []KeyValue) {
 		v = append(v, kva...)
 
 		ofile.Close()
-		ofile, _ = os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0666)
+		ofile, _ = os.OpenFile(k, os.O_WRONLY|os.O_CREATE, 0666)
 		enc := json.NewEncoder(ofile)
 		enc.Encode(&v)
 		ofile.Close()
