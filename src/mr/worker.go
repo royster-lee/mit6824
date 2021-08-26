@@ -73,7 +73,7 @@ func Worker(mapf func(string, string) []KeyValue,
 
 func doReduceTask(task Task, reducef func(string, []string) string) {
 	filename := task.FileName
-	fmt.Println("worker do reduce task : ", filename)
+	//fmt.Println("worker do reduce task : ", filename)
 	fp, _ := os.Open(filename)
 	dec := json.NewDecoder(fp)
 	var intermediate []KeyValue
@@ -106,7 +106,7 @@ func doReduceTask(task Task, reducef func(string, []string) string) {
 
 func doMapTask(task Task, mapf func(string, string) []KeyValue) {
 	filename := task.FileName
-	println("worker do map task : ", filename)
+	//println("worker do map task : ", filename)
 	var intermediate []KeyValue
 	file, _ := os.Open(filename)
 	content, _ := ioutil.ReadAll(file)
