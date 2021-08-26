@@ -121,20 +121,26 @@ func doMapTask(task Task, mapf func(string, string) []KeyValue) {
 		suffix := strconv.Itoa(ihash(intermediate[i].Key) % 10)
 		oname := basicName + suffix
 		shuffleMap[oname] = append(shuffleMap[oname], intermediate[i])
-		i ++
+		i++
 	}
 	var requestMsg RequestMsg
 	for k, v := range shuffleMap {
-		ofile, _ := os.OpenFile(k, os.O_WRONLY | os.O_CREATE,0666)
-		// 已经存在的文件内容拼接后重新写入
+		ofile, err := os.Open(filename)
+		if err != nil {
+			ofile, err = os.Create(filename)
+		}
+		// 已经存在的文件内容拼接后重新
 		dec := json.NewDecoder(ofile)
-		var tmp []KeyValue
-		dec.Decode(&tmp)
-		v = append(v, tmp...)
+		var kva []KeyValue
+		dec.Decode(&kva)
+		v = append(v, kva...)
 
+		ofile.Close()
+		ofile, _ = os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0666)
 		enc := json.NewEncoder(ofile)
 		enc.Encode(&v)
 		ofile.Close()
+
 		requestMsg.ReduceFiles = append(requestMsg.ReduceFiles, k)
 	}
 
