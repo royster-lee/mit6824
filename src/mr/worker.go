@@ -1,10 +1,17 @@
 package mr
 
-import "fmt"
-import "log"
-import "net/rpc"
-import "hash/fnv"
-
+import (
+	"encoding/json"
+	"fmt"
+	"hash/fnv"
+	"io/ioutil"
+	"log"
+	"net/rpc"
+	"os"
+	"sort"
+	"strconv"
+	"time"
+)
 
 //
 // Map functions return a slice of KeyValue.
@@ -13,6 +20,13 @@ type KeyValue struct {
 	Key   string
 	Value string
 }
+
+
+type ByKey []KeyValue
+
+func (a ByKey) Len() int           { return len(a) }
+func (a ByKey) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByKey) Less(i, j int) bool { return a[i].Key < a[j].Key }
 
 //
 // use ihash(key) % NReduce to choose the reduce
@@ -24,7 +38,6 @@ func ihash(key string) int {
 	return int(h.Sum32() & 0x7fffffff)
 }
 
-
 //
 // main/mrworker.go calls this function.
 //
@@ -32,33 +45,91 @@ func Worker(mapf func(string, string) []KeyValue,
 	reducef func(string, []string) string) {
 
 	// Your worker implementation here.
-
 	// uncomment to send the Example RPC to the master.
 	// CallExample()
 
+	// initial worker struct
+
+	// every worker generate a workId
+
+	// get a map task, in this case just get filename
+	for {
+		var response ResponseMsg
+		doHeartBreak(&response)
+		switch response.JobType {
+		case MapJob:
+			doMapTask(response.Job, mapf)
+		case ReduceJob:
+			doReduceTask(response.Job, reducef)
+		case WaitJob:
+			//fmt.Println("do wait job")
+			time.Sleep(1 * time.Second)
+		case CompleteJob:
+			fmt.Println("worker return")
+			return
+		}
+	}
 }
 
-//
-// example function to show how to make an RPC call to the master.
-//
-// the RPC argument and reply types are defined in rpc.go.
-//
-func CallExample() {
+func doReduceTask(task Task, reducef func(string, []string) string) {
+	filename := task.FileName
+	//fmt.Println("worker do reduce task : ", filename)
+	fp, _ := os.Open(filename)
+	dec := json.NewDecoder(fp)
+	var intermediate []KeyValue
+	dec.Decode(&intermediate)
+	sort.Sort(ByKey(intermediate))
+	oname := "mr-out-" + strconv.Itoa(task.Index)
+	ofile, _ := os.Create(oname)
+	i := 0
+	for i < len(intermediate) {
+		j := i + 1
+		for j < len(intermediate) && intermediate[j].Key == intermediate[i].Key {
+			j++
+		}
+		values := []string{}
+		for k := i; k < j; k++ {
+			values = append(values, intermediate[k].Value)
+		}
+		output := reducef(intermediate[i].Key, values)
 
-	// declare an argument structure.
-	args := ExampleArgs{}
+		// this is the correct format for each line of Reduce output.
+		fmt.Fprintf(ofile, "%v %v\n", intermediate[i].Key, output)
+		i = j
+	}
+	ofile.Close()
+	var requestMsg RequestMsg
+	requestMsg.JobType = ReduceJob
+	requestMsg.TaskIndex = task.Index
+	doReport(&requestMsg)
+}
 
-	// fill in the argument(s).
-	args.X = 99
+func doMapTask(task Task, mapf func(string, string) []KeyValue) {
+	filename := task.FileName
+	//println("worker do map task : ", filename)
+	var intermediate []KeyValue
+	file, _ := os.Open(filename)
+	content, _ := ioutil.ReadAll(file)
+	file.Close()
+	kva := mapf(filename, string(content))
+	intermediate = append(intermediate, kva...)
 
-	// declare a reply structure.
-	reply := ExampleReply{}
+	mappingName := "mapping-" + strconv.Itoa(task.Index)
+	var requestMsg RequestMsg
+	ofile, _ := os.Create(mappingName)
+	enc := json.NewEncoder(ofile)
+	enc.Encode(&intermediate)
+	requestMsg.Mapping = mappingName
+	requestMsg.JobType = MapJob
+	requestMsg.TaskIndex = task.Index
+	doReport(&requestMsg)
+}
 
-	// send the RPC request, wait for the reply.
-	call("Master.Example", &args, &reply)
-
-	// reply.Y should be 100.
-	fmt.Printf("reply.Y %v\n", reply.Y)
+func doHeartBreak(responseMsg *ResponseMsg) {
+	call("Master.HeartBreak", &struct{}{}, responseMsg)
+}
+func doReport(requestMsg *RequestMsg) {
+	call("Master.Report", requestMsg, &struct{}{})
 }
 
 //
@@ -67,9 +138,9 @@ func CallExample() {
 // returns false if something goes wrong.
 //
 func call(rpcname string, args interface{}, reply interface{}) bool {
-	// c, err := rpc.DialHTTP("tcp", "127.0.0.1"+":1234")
-	sockname := masterSock()
-	c, err := rpc.DialHTTP("unix", sockname)
+	c, err := rpc.DialHTTP("tcp", "127.0.0.1"+":1234")
+	//sockname := masterSock()
+	//c, err := rpc.DialHTTP("unix", sockname)
 	if err != nil {
 		log.Fatal("dialing:", err)
 	}
