@@ -27,7 +27,7 @@ type Master struct {
 	finishedMapNum		int32
 	finishedReduceNum	int32
 	done				bool
-	mu 					*sync.Mutex
+	mu 					sync.Mutex
 }
 
 const (
@@ -58,9 +58,9 @@ type HeartbeatResponse struct {
 	JobType int
 }
 type RequestMsg struct {
-	JobType		int
-	TaskIndex	int
-	Maping		string
+	JobType   int
+	TaskIndex int
+	Mapping   string
 }
 
 const (
@@ -130,13 +130,13 @@ func (m *Master) HeartBreak(_ *struct{}, responseMsg *ResponseMsg) error {
 
 func (m *Master) Report(requestMsg *RequestMsg, _ *struct{}) error {
 	// we assumption master will not crash, complete task
-	fmt.Printf("report a job JobType =%d, index =%d ,ReduceFiles = %v\n", requestMsg.JobType, requestMsg.TaskIndex, requestMsg.Maping)
+	fmt.Printf("report a job JobType =%d, index =%d ,ReduceFiles = %v\n", requestMsg.JobType, requestMsg.TaskIndex, requestMsg.Mapping)
 	switch requestMsg.JobType {
 	case MapJob:
 		if m.mapTasks[requestMsg.TaskIndex].State == TASK_PROCESSING {
 			m.mapTasks[requestMsg.TaskIndex].State = TASK_DONE
 			atomic.AddInt32(&m.finishedMapNum, 1)
-			m.mappings = append(m.mappings, requestMsg.Maping)
+			m.mappings = append(m.mappings, requestMsg.Mapping)
 		}
 		if m.finishedMapNum == int32(m.nMap) {
 			basicName := "shuffle-"

@@ -119,7 +119,7 @@ func doMapTask(task Task, mapf func(string, string) []KeyValue) {
 	ofile, _ := os.Create(mappingName)
 	enc := json.NewEncoder(ofile)
 	enc.Encode(&intermediate)
-	requestMsg.Maping = mappingName
+	requestMsg.Mapping = mappingName
 	requestMsg.JobType = MapJob
 	requestMsg.TaskIndex = task.Index
 	doReport(&requestMsg)
