@@ -49,7 +49,10 @@ package labrpc
 //   pass svc to srv.AddService()
 //
 
-import "../labgob"
+import (
+	"../labgob"
+	"fmt"
+)
 import "bytes"
 import "reflect"
 import "sync"
@@ -328,6 +331,7 @@ func (rn *Network) MakeEnd(endname interface{}) *ClientEnd {
 }
 
 func (rn *Network) AddServer(servername interface{}, rs *Server) {
+	fmt.Printf("servername = %v; Server = %v\n", servername, rs)
 	rn.mu.Lock()
 	defer rn.mu.Unlock()
 

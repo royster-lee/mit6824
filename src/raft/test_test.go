@@ -9,7 +9,6 @@ package raft
 //
 
 import (
-	"os"
 	"testing"
 )
 import "fmt"
@@ -32,7 +31,6 @@ func TestInitialElection2A(t *testing.T) {
 		}
 	}
 	t.Fatalf("bye bye\n")
-	os.Exit(1)
 	defer cfg.cleanup()
 
 	cfg.begin("Test (2A): initial election")
