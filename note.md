@@ -1,1 +1,0 @@
-1.map阶段结束后会产生nReduce个shuffle文件 对应n个reduce任务

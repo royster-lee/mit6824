@@ -17,16 +17,16 @@ package raft
 //   in the same server.
 //
 
-import "sync"
+import (
+	"sync"
+)
 import "sync/atomic"
 import "../labrpc"
 
 // import "bytes"
 // import "../labgob"
 
-
-
-//
+// ApplyMsg
 // as each Raft peer becomes aware that successive log entries are
 // committed, the peer should send an ApplyMsg to the service (or
 // tester) on the same server, via the applyCh passed to Make(). set
@@ -43,6 +43,12 @@ type ApplyMsg struct {
 	CommandIndex int
 }
 
+const (
+	FOLLOWER = iota
+	CANDIDATE
+	LEADER
+)
+
 //
 // A Go object implementing a single Raft peer.
 //
@@ -56,7 +62,9 @@ type Raft struct {
 	// Your data here (2A, 2B, 2C).
 	// Look at the paper's Figure 2 for a description of what
 	// state a Raft server must maintain.
-
+	currentTerm int
+	voteFor		int
+	state		int
 }
 
 // return currentTerm and whether this server
@@ -117,6 +125,8 @@ func (rf *Raft) readPersist(data []byte) {
 //
 type RequestVoteArgs struct {
 	// Your data here (2A, 2B).
+	Term int
+	CandidateId int
 }
 
 //
@@ -215,17 +225,17 @@ func (rf *Raft) killed() bool {
 	return z == 1
 }
 
-//
-// the service or tester wants to create a Raft server. the ports
-// of all the Raft servers (including this one) are in peers[]. this
-// server's port is peers[me]. all the servers' peers[] arrays
-// have the same order. persister is a place for this server to
-// save its persistent state, and also initially holds the most
-// recent saved state, if any. applyCh is a channel on which the
-// tester or service expects Raft to send ApplyMsg messages.
-// Make() must return quickly, so it should start goroutines
-// for any long-running work.
-//
+
+//the service or tester wants to create a Raft server. the ports
+//of all the Raft servers (including this one) are in peers[]. this
+//server's port is peers[me]. all the servers' peers[] arrays
+//have the same order. persister is a place for this server to
+//save its persistent state, and also initially holds the most
+//recent saved state, if any. applyCh is a channel on which the
+//tester or service expects Raft to send ApplyMsg messages.
+//Make() must return quickly, so it should start goroutines
+//for any long-running work.
+
 func Make(peers []*labrpc.ClientEnd, me int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
 	rf := &Raft{}
@@ -238,6 +248,18 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
 
+	//go func(rf *Raft) {
+	//	for {
+	//		period := time.Duration(150 + makeSeed() % 150)
+	//		switch rf.state {
+	//		case FOLLOWER:
+	//			time.Sleep(period * time.Millisecond)
+	//		case CANDIDATE:
+	//		case LEADER:
+	//
+	//		}
+	//	}
+	//}(rf)
 
 	return rf
 }

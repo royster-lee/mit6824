@@ -65,7 +65,7 @@ func Worker(mapf func(string, string) []KeyValue,
 			//fmt.Println("do wait job")
 			time.Sleep(1 * time.Second)
 		case CompleteJob:
-			fmt.Println("worker return")
+			//fmt.Println("worker return")
 			return
 		}
 	}
