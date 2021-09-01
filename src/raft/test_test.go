@@ -8,7 +8,10 @@ package raft
 // test with the original before submitting.
 //
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 import "fmt"
 import "time"
 import "math/rand"
@@ -24,9 +27,12 @@ func TestInitialElection2A(t *testing.T) {
 	cfg := make_config(t, servers, false)
 	t.Logf("endnames = %v\n", cfg.endnames)
 	for i:=0;i<cfg.n;i++{
-		t.Logf("peers = %v\n", cfg.rafts[i].peers)
+		for j:=0;j<cfg.n;j++{
+			t.Logf("i = %d , endnames = %v\n", i , cfg.rafts[i].peers[j])
+		}
 	}
 	t.Fatalf("bye bye\n")
+	os.Exit(1)
 	defer cfg.cleanup()
 
 	cfg.begin("Test (2A): initial election")
