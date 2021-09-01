@@ -331,7 +331,6 @@ func (rn *Network) MakeEnd(endname interface{}) *ClientEnd {
 }
 
 func (rn *Network) AddServer(servername interface{}, rs *Server) {
-	fmt.Printf("servername = %v; Server = %v\n", servername, rs)
 	rn.mu.Lock()
 	defer rn.mu.Unlock()
 
@@ -352,6 +351,7 @@ func (rn *Network) Connect(endname interface{}, servername interface{}) {
 	defer rn.mu.Unlock()
 
 	rn.connections[endname] = servername
+	fmt.Printf("connections = %v\n", rn.connections)
 }
 
 // enable/disable a ClientEnd.
