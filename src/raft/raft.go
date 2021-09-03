@@ -47,7 +47,7 @@ type ApplyMsg struct {
 }
 
 const (
-	FOLLOWER = "follow"
+	FOLLOWER = "follower"
 	CANDIDATE = "candidate"
 	LEADER = "leader"
 )
@@ -108,10 +108,10 @@ func (rf *Raft) ticker() {
 }
 
 func (rf *Raft)ChangeState(state string)  {
-	fmt.Printf("server %d become %s\n", rf.me, state)
 	rf.state = state
 	rf.voteFor = -1
 	rf.voteCount = 0
+	fmt.Printf("server %d become %s\n", rf.me, rf.state)
 }
 
 
@@ -258,6 +258,8 @@ type RequestVoteReply struct {
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (2A, 2B).
 	// 如果自己的term不大于当前选举者得term且当前未给其他选举者投票；则投票给当前选举者;重置自己得选举计时器
+	rf.mu.Lock()
+	rf.mu.Unlock()
 	fmt.Printf("server %d is state %s recive RequestVote rpc from %d\n", rf.me, rf.state, args.CandidateId)
 	rf.electionTimer.Reset(RandomizedElectionTimeout())
 	if rf.state == FOLLOWER && args.Term >= rf.currentTerm && rf.voteFor == -1 {
