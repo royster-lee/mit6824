@@ -132,6 +132,7 @@ func (rf *Raft)StartElection()  {
 			}
 		}
 	}
+	fmt.Printf("server %d voteCount %d majority is %d\n",rf.me, rf.voteCount, rf.majority)
 	if rf.voteCount >= rf.majority {
 		rf.ChangeState(LEADER)
 	}
