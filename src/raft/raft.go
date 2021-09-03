@@ -159,6 +159,8 @@ func (rf *Raft)BroadcastHeartbeat(b bool)  {
 		if i != rf.me{
 			var args AppendEntries
 			var reply AppendEntriesReply
+			args.LeaderId = rf.me
+			args.Term = rf.currentTerm
 			rf.peers[i].Call("Raft.AppendEntries", &args, &reply)
 		}
 	}
@@ -256,7 +258,7 @@ type RequestVoteReply struct {
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (2A, 2B).
 	// 如果自己的term不大于当前选举者得term且当前未给其他选举者投票；则投票给当前选举者;重置自己得选举计时器
-	fmt.Printf("server %d recive RequestVote rpc from %d\n", rf.me, args.CandidateId)
+	fmt.Printf("server %d is state %s recive RequestVote rpc from %d\n", rf.me, rf.state, args.CandidateId)
 	rf.electionTimer.Reset(RandomizedElectionTimeout())
 	if rf.state == FOLLOWER && args.Term >= rf.currentTerm && rf.voteFor == -1 {
 		fmt.Printf("server %d voteFor server %d\n", rf.me, args.CandidateId)
