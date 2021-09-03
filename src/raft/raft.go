@@ -114,6 +114,7 @@ func (rf *Raft)ChangeState(state string)  {
 
 
 func (rf *Raft)StartElection()  {
+	fmt.Printf("server %d start election\n", rf.me)
 	rf.voteFor = rf.me
 	rf.voteCount++
 	for i:=0; i<rf.nPeer; i++ {
@@ -247,8 +248,6 @@ type RequestVoteReply struct {
 //
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (2A, 2B).
-	rf.mu.Lock()
-	defer rf.mu.Unlock()
 	// 如果自己的term不大于当前选举者得term且当前未给其他选举者投票；则投票给当前选举者;重置自己得选举计时器
 	fmt.Printf("server %d recive RequestVote rpc from %d\n", rf.me, args.CandidateId)
 	rf.electionTimer.Reset(RandomizedElectionTimeout())
