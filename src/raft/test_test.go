@@ -24,13 +24,6 @@ const RaftElectionTimeout = 1000 * time.Millisecond
 func TestInitialElection2A(t *testing.T) {
 	servers := 3
 	cfg := make_config(t, servers, false)
-	t.Logf("endnames = %v\n", cfg.endnames)
-	for i:=0;i<cfg.n;i++{
-		for j:=0;j<cfg.n;j++{
-			t.Logf("i = %d , endnames = %v\n", i , cfg.rafts[i].peers[j])
-		}
-	}
-	t.Fatalf("bye bye\n")
 	defer cfg.cleanup()
 
 	cfg.begin("Test (2A): initial election")

@@ -51,7 +51,6 @@ package labrpc
 
 import (
 	"../labgob"
-	"fmt"
 )
 import "bytes"
 import "reflect"
@@ -351,7 +350,6 @@ func (rn *Network) Connect(endname interface{}, servername interface{}) {
 	defer rn.mu.Unlock()
 
 	rn.connections[endname] = servername
-	fmt.Printf("connections = %v\n", rn.connections)
 }
 
 // enable/disable a ClientEnd.
