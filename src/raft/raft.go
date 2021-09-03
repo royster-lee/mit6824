@@ -369,6 +369,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.me = me
 	rf.nPeer = len(rf.peers)
 	rf.voteFor = -1
+	fmt.Println("nperr is", rf.nPeer)
 	rf.majority = int(math.Ceil(float64(rf.nPeer / 2)))
 	rf.electionTimer = time.NewTimer(RandomizedElectionTimeout())
 	rf.heartbeatTimer = time.NewTimer(StableHeartbeatTimeout())
