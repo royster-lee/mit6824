@@ -77,11 +77,11 @@ type Raft struct {
 }
 
 func StableHeartbeatTimeout() time.Duration {
-	return 2000 * time.Millisecond
+	return 1000 * time.Millisecond
 }
 
 func RandomizedElectionTimeout() time.Duration {
-	return time.Duration(2000 + makeSeed() % 2000) * time.Millisecond
+	return time.Duration(1000 + makeSeed() % 500) * time.Millisecond
 }
 
 func (rf *Raft) ticker() {
@@ -165,8 +165,11 @@ func (rf *Raft)BroadcastHeartbeat(b bool)  {
 func (rf *Raft)AppendEntries(args *AppendEntries, reply *AppendEntriesReply)  {
 	fmt.Printf("server %d recive AppendEntries rpc from %d\n", rf.me, args.LeaderId)
 	rf.electionTimer.Reset(RandomizedElectionTimeout())
-	if rf.state == CANDIDATE &&  args.Term >= rf.currentTerm {
-		rf.ChangeState(FOLLOWER)
+	if args.Term >= rf.currentTerm {
+		rf.currentTerm = args.Term
+		if rf.state == CANDIDATE {
+			rf.ChangeState(FOLLOWER)
+		}
 	}
 }
 
@@ -359,6 +362,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
 	rf := &Raft{}
 	rf.peers = peers
+	rf.currentTerm = 0
 	rf.persister = persister
 	rf.me = me
 	rf.nPeer = len(rf.peers)
