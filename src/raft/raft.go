@@ -77,11 +77,11 @@ type Raft struct {
 }
 
 func StableHeartbeatTimeout() time.Duration {
-	return 1000 * time.Millisecond
+	return 100 * time.Millisecond
 }
 
 func RandomizedElectionTimeout() time.Duration {
-	return time.Duration(1000 + makeSeed() % 500) * time.Millisecond
+	return time.Duration(200 + makeSeed() % 200) * time.Millisecond
 }
 
 func (rf *Raft) ticker() {
