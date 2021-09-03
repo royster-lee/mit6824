@@ -88,12 +88,14 @@ func (rf *Raft) ticker() {
 	for rf.killed() == false {
 		select {
 		case <-rf.electionTimer.C:
-			rf.mu.Lock()
-			rf.ChangeState(CANDIDATE)
-			rf.currentTerm += 1
-			rf.StartElection()
-			rf.electionTimer.Reset(RandomizedElectionTimeout())
-			rf.mu.Unlock()
+			if rf.state != LEADER {
+				rf.mu.Lock()
+				rf.ChangeState(CANDIDATE)
+				rf.currentTerm += 1
+				rf.StartElection()
+				rf.electionTimer.Reset(RandomizedElectionTimeout())
+				rf.mu.Unlock()
+			}
 		case <-rf.heartbeatTimer.C:
 			rf.mu.Lock()
 			if rf.state == LEADER {
@@ -130,7 +132,7 @@ func (rf *Raft)StartElection()  {
 			}
 		}
 	}
-	if rf.voteCount > rf.majority {
+	if rf.voteCount >= rf.majority {
 		rf.ChangeState(LEADER)
 	}
 
