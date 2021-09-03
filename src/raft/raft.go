@@ -132,7 +132,6 @@ func (rf *Raft)StartElection()  {
 			}
 		}
 	}
-	fmt.Printf("server %d voteCount %d majority is %d\n",rf.me, rf.voteCount, rf.majority)
 	if rf.voteCount >= rf.majority {
 		rf.ChangeState(LEADER)
 	}
@@ -255,7 +254,7 @@ type RequestVoteReply struct {
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (2A, 2B).
 	// 如果自己的term不大于当前选举者得term且当前未给其他选举者投票；则投票给当前选举者;重置自己得选举计时器
-	fmt.Printf("server %d recive RequestVote rpc from %d\n", rf.me, args.CandidateId)
+	fmt.Printf("server %d recive RequestVote rpc from %d;args.Term = %d, rf.currentTerm = %d\n", rf.me, args.CandidateId,args.Term, rf.currentTerm)
 	rf.electionTimer.Reset(RandomizedElectionTimeout())
 	if rf.state == FOLLOWER && args.Term >= rf.currentTerm && rf.voteFor == -1 {
 		fmt.Printf("server %d voteFor server %d\n", rf.me, args.CandidateId)
@@ -369,8 +368,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.me = me
 	rf.nPeer = len(rf.peers)
 	rf.voteFor = -1
-	fmt.Println("nperr is", rf.nPeer)
-	rf.majority = int(math.Ceil(float64(rf.nPeer / 2)))
+	rf.majority = int(math.Ceil(float64(rf.nPeer) / 2))
 	rf.electionTimer = time.NewTimer(RandomizedElectionTimeout())
 	rf.heartbeatTimer = time.NewTimer(StableHeartbeatTimeout())
 	// Your initialization code here (2A, 2B, 2C).
