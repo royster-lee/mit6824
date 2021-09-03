@@ -134,6 +134,8 @@ func (rf *Raft)StartElection()  {
 	}
 	if rf.voteCount >= rf.majority {
 		rf.ChangeState(LEADER)
+		rf.BroadcastHeartbeat(true)
+		rf.heartbeatTimer.Reset(StableHeartbeatTimeout())
 	}
 
 }
