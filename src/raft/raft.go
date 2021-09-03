@@ -376,7 +376,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.heartbeatTimer = time.NewTimer(StableHeartbeatTimeout())
 	// Your initialization code here (2A, 2B, 2C).
 
-	fmt.Println("state =",rf.state)
+	fmt.Println("******************** start test; wish all pass *******************")
 	go rf.ticker()
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
