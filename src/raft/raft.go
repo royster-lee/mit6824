@@ -257,6 +257,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	fmt.Printf("server %d recive RequestVote rpc from %d\n", rf.me, args.CandidateId)
 	rf.electionTimer.Reset(RandomizedElectionTimeout())
 	if rf.state == FOLLOWER && args.Term >= rf.currentTerm && rf.voteFor == -1 {
+		fmt.Printf("server %d voteFor server %d\n", rf.me, args.CandidateId)
 		reply.VoteGranted = true
 		rf.voteFor = args.CandidateId
 		rf.currentTerm++
