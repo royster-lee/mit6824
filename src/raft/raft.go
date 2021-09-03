@@ -367,6 +367,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.currentTerm = 0
 	rf.persister = persister
 	rf.me = me
+	rf.state = FOLLOWER
 	rf.nPeer = len(rf.peers)
 	rf.voteFor = -1
 	rf.majority = int(math.Ceil(float64(rf.nPeer) / 2))
