@@ -77,11 +77,11 @@ type Raft struct {
 }
 
 func StableHeartbeatTimeout() time.Duration {
-	return 100 * time.Millisecond
+	return 200 * time.Millisecond
 }
 
 func RandomizedElectionTimeout() time.Duration {
-	return time.Duration(150 + makeSeed() % 150)
+	return time.Duration(200 + makeSeed() % 200)
 }
 
 func (rf *Raft) ticker() {
@@ -106,7 +106,7 @@ func (rf *Raft) ticker() {
 }
 
 func (rf *Raft)ChangeState(state string)  {
-	fmt.Printf("server %d become %s\n", rf.me, rf.state)
+	fmt.Printf("server %d become %s\n", rf.me, state)
 	rf.state = state
 	rf.voteFor = -1
 	rf.voteCount = 0
@@ -160,6 +160,7 @@ func (rf *Raft)BroadcastHeartbeat(b bool)  {
 }
 
 func (rf *Raft)AppendEntries(args *AppendEntries, reply *AppendEntriesReply)  {
+	fmt.Printf("server %d recive AppendEntries rpc from %d\n", rf.me, args.LeaderId)
 	rf.electionTimer.Reset(RandomizedElectionTimeout())
 	if rf.state == CANDIDATE &&  args.Term >= rf.currentTerm {
 		rf.ChangeState(FOLLOWER)
@@ -171,7 +172,6 @@ func (rf *Raft)AppendEntries(args *AppendEntries, reply *AppendEntriesReply)  {
 // return currentTerm and whether this server
 // believes it is the leader.
 func (rf *Raft) GetState() (int, bool) {
-
 	var term int
 	var isleader bool
 	// Your code here (2A).
@@ -250,6 +250,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 	// 如果自己的term不大于当前选举者得term且当前未给其他选举者投票；则投票给当前选举者;重置自己得选举计时器
+	fmt.Printf("server %d recive RequestVote rpc from %d\n", rf.me, args.CandidateId)
 	rf.electionTimer.Reset(RandomizedElectionTimeout())
 	if rf.state == FOLLOWER && args.Term >= rf.currentTerm && rf.voteFor == -1 {
 		reply.VoteGranted = true
